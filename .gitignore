@@ -11,3 +11,14 @@
 *.lai
 *.la
 *.a
+
+#vs project file
+source/ipch
+source/Debug
+source/Release
+*.opensdf
+*.sdf
+*.tlog
+*.obj
+source/ossGui/Debug
+source/ossGui/Release
