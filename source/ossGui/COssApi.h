@@ -102,7 +102,7 @@ protected:
 private:
 public:
 	void ListBucket(ApiCallBack func);
-	void recvListBucket(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);
+	void recvListBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
 	void PutBucket(std::string bucketName,ApiCallBack func,std::string acl="private");
 	void recvPutBucket(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);

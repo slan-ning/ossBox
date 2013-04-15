@@ -1,4 +1,3 @@
-#include "StdAfx.h"
 #include "CIoPool.h"
 
 CIoPool* CIoPool::pool = NULL;

@@ -54,6 +54,15 @@
     <ClInclude Include="InputBox.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="common.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="WebRequest.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="WebRespone.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ossGui.cpp">
@@ -86,6 +95,12 @@
     <ClCompile Include="InputBox.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="WebRequest.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="WebRespone.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ossGui.rc">
@@ -96,6 +111,7 @@
     <None Include="res\ossGui.rc2">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\ossGui.ico">

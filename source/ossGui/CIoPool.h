@@ -1,6 +1,4 @@
-#ifndef CIOPOOL_H
-#define CIOPOOL_H
-
+#pragma once
 #include <boost\asio.hpp>
 #include <boost\thread.hpp>
 
@@ -25,4 +23,3 @@ class CIoPool
         static CIoPool * pool;
 };
 
-#endif // CIOPOOL_H

@@ -8,7 +8,6 @@
 using namespace std;
 
 COssApi::COssApi(std::string accessid,std::string accesskey,std::string* host)
-	:mHttp(accessid,accesskey)
 {
         this->m_host=host;
 }
@@ -22,16 +21,16 @@ COssApi::~COssApi()
 
 void COssApi::ListBucket(ApiCallBack func)
 {
-        this->mHttp.Get("http://"+*m_host,boost::bind(&COssApi::recvListBucket,this,_1,_2,_3,func));
+        this->mHttp.Get("http://"+*m_host,boost::bind(&COssApi::recvListBucket,this,_1,func));
 }
 
-void COssApi::recvListBucket(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func)
+void COssApi::recvListBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
-	if(respone["responeCode"]=="200")
+	if(respone->statusCode==200)
 	{
-		if(msg!=NULL)
+		if(respone->msg.get()!=NULL)
 		{
-			std::string sources=msg;
+			std::string sources=respone->msg.get();
 			std::vector<std::string> *buckets=new std::vector<std::string>;
 
 			boost::smatch result;
@@ -47,15 +46,15 @@ void COssApi::recvListBucket(std::map<std::string,std::string> respone, char * m
 				buckets->push_back(result[1]);	
 				start=result[0].second;
 			}
-			func(weblib::convert<int>(respone["responeCode"]),sources,buckets);
+			func(respone->statusCode,sources,buckets);
 
 
 		}else
 		{
-			func(weblib::convert<int>(respone["responeCode"]),"",NULL);
+			func(respone->statusCode,"",NULL);
 		}
 
-	}else if(respone["responeCode"]=="403"){
+	}else if(respone->statusCode==403){
 		func(403,"登录失败，ID或者key错误!",NULL);
 	}
 	else
@@ -63,13 +62,12 @@ void COssApi::recvListBucket(std::map<std::string,std::string> respone, char * m
 		func(-1,"连接错误",NULL);
 	}
 
-	delete msg;
 }
 
 //添加bucket，修改bucket权限
 void COssApi::PutBucket(std::string bucketName,ApiCallBack func,std::string acl)
 {
-	this->mHttp.m_request["x-oss-acl"]=acl;
+	this->mHttp.Request.m_otherHeader["x-oss-acl"]=acl;
         this->mHttp.Put("http://"+bucketName+"."+*m_host,"",boost::bind(&COssApi::recvPutBucket,this,_1,_2,_3,func));
 }
 

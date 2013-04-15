@@ -108,6 +108,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CIoPool.h" />
+    <ClInclude Include="common.h" />
     <ClInclude Include="COssApi.h" />
     <ClInclude Include="Http.h" />
     <ClInclude Include="HttpClient.h" />
@@ -119,6 +120,8 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="weblib.h" />
+    <ClInclude Include="WebRequest.h" />
+    <ClInclude Include="WebRespone.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CIoPool.cpp" />
@@ -134,11 +137,14 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="weblib.cpp" />
+    <ClCompile Include="WebRequest.cpp" />
+    <ClCompile Include="WebRespone.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ossGui.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="ClassDiagram.cd" />
     <None Include="res\ossGui.rc2" />
   </ItemGroup>
   <ItemGroup>
