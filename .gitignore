@@ -20,5 +20,7 @@ source/Release
 *.sdf
 *.tlog
 *.obj
+*.aps
+*.suo
 source/ossGui/Debug
 source/ossGui/Release
