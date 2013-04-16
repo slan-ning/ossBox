@@ -1,8 +1,9 @@
+#include "StdAfx.h"
 #include "HttpClient.h"
 #include <iostream>
 
-#pragma comment( lib, "libeay32.lib" )
-#pragma comment( lib, "ssleay32.lib" )
+#pragma comment( lib, "libeay32MT.lib" )
+#pragma comment( lib, "ssleay32MT.lib" )
 
 CHttpClient::CHttpClient(boost::asio::io_service& io_service)
 	:socket_(io_service),

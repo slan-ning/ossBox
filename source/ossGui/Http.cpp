@@ -1,3 +1,4 @@
+#include "StdAfx.h"
 #include "Http.h"
 #include "CIoPool.h"
 
@@ -77,6 +78,30 @@ void CHttp::Get(std::string url,HttpCallBack cb)
 {
 	boost::shared_array<char> data;
 	this->Request.BuildBody("GET",url,data,0);
+
+	CHttpClient *client=new CHttpClient(*m_ioServ);
+	client->Send(&this->Request,boost::bind(&CHttp::MessageBack,this,_1,cb,client));
+	return ;
+}
+
+void CHttp::Delete(std::string url,HttpCallBack cb)
+{
+	boost::shared_array<char> data;
+	this->Request.BuildBody("DELETE",url,data,0);
+
+	CHttpClient *client=new CHttpClient(*m_ioServ);
+	client->Send(&this->Request,boost::bind(&CHttp::MessageBack,this,_1,cb,client));
+	return ;
+}
+
+void CHttp::Put(std::string url,std::string data,HttpCallBack cb)
+{
+	char * dataAry=new char (data.length());
+	memset(dataAry,0,data.length());
+	memcpy(dataAry,data.c_str(),data.length());
+
+	boost::shared_array<char> postdata(dataAry);
+	this->Request.BuildBody("PUT",url,postdata,data.length());
 
 	CHttpClient *client=new CHttpClient(*m_ioServ);
 	client->Send(&this->Request,boost::bind(&CHttp::MessageBack,this,_1,cb,client));

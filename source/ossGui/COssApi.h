@@ -105,40 +105,41 @@ public:
 	void recvListBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
 	void PutBucket(std::string bucketName,ApiCallBack func,std::string acl="private");
-	void recvPutBucket(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);
+	void recvPutBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
 	void GetBucketAcl(std::string bucketName,ApiCallBack func);
-	void recvBucketAcl(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);
+	void recvBucketAcl(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
 	void DeleteBucket(std::string bucketName,ApiCallBack func);
-	void recvDeleteBucket(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);
+	void recvDeleteBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
 
 	void PutObject(std::string bucketName,std::string objName,ApiCallBack func,std::string newName="");
-	void recvPutObject(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);
+	void recvPutObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
 	void ListObject(std::string bucketName,ApiCallBack func,std::string prefix="",std::string delemiter="/",std::string marker="",std::string maxKeys="100",objectList *objects=NULL);
-	void recvListObject(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func,objectList *objects);
+	void recvListObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack func,objectList *objects);
 
 	void downObject(std::string bucketName,std::string objName,std::string path,ApiCallBack func,string newname="");
-	void recvGetObject(std::map<std::string,std::string> respone, char * msg , int nLen,std::string newname,ApiCallBack func);
+	void recvGetObject(boost::shared_ptr<CWebRespone> respone,std::string newname,ApiCallBack func);
 
 	void initMultiUp(std::string bucketName,string objName,ApiCallBack func );
-	void recvInitUp(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);
+	void recvInitUp(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
+
 	void PutObject(std::string bucketName,std::string objName,std::string path,string upid,int partid,long pos,long size,ApiCallBack func);
 	void CompleteUpload(std::string bucketName,std::string objectName,std::string upid,vector<UPTASK*> *tasklist,ApiCallBack func);
-	void recvCompleteUpload(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);
+	void recvCompleteUpload(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
-	void recvListListMulitUp(std::map<std::string,std::string> respone, char * msg , int nLen,uploadsObjectList *objects,ApiCallBack func);
+	void recvListListMulitUp(boost::shared_ptr<CWebRespone> respone,uploadsObjectList *objects,ApiCallBack func);
 	void ListMulitUp(std::string bucketName,ApiCallBack func,std::string prefix="",std::string delemiter="/",std::string marker="",std::string maxKeys="100",uploadsObjectList *objects=NULL);
 	void abortMulitUp(std::string  bucketName,std::string objectName,std::string upid,ApiCallBack func);
-	void recvabortMulitUp(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);
+	void recvabortMulitUp(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
 	void createDir(string bucketName,string dirname,ApiCallBack func);
-	void recvCreateDir(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);
+	void recvCreateDir(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
         void deleteMulitFile(string bucketName,vector<string> filelist,ApiCallBack func);
-        void recvdeleteMulitFile(std::map<std::string,std::string> respone, char * msg , int nLen,ApiCallBack func);
+        void recvdeleteMulitFile(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
 
 	std::string  getContentType(std::string path);
