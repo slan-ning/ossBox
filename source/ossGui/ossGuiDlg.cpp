@@ -586,7 +586,9 @@ void CossGuiDlg::upFile(void)
                                 i++;
                         }
 
-                }
+                }else{
+					this->getTimeMsg(path+"无法打开，是否无权限?");
+				}
                 m_uplist.pop();
 
         }
@@ -1196,3 +1198,5 @@ void CossGuiDlg::OnBnClickedCheck2()
                 this->m_host=new std::string("oss.aliyuncs.com");
         }
 }
+
+

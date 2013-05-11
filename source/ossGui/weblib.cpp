@@ -186,17 +186,22 @@ namespace weblib
 
                 if(!fs::exists(fullpath)){return ret;}
                 fs::recursive_directory_iterator end_iter;
-                for(fs::recursive_directory_iterator iter(fullpath);iter!=end_iter;iter++){
-                        try{
-                                if (!fs::is_directory( *iter ) ){
-                                        ret.push_back(iter->path().string());
-                                }
-                        } catch ( const std::exception & ex ){
-                                std::cerr << ex.what() << std::endl;
-                                continue;
-                        }
-                }
-                return ret;
+				try{
+					for(fs::recursive_directory_iterator iter(fullpath);iter!=end_iter;iter++){
+							try{
+									if (!fs::is_directory( *iter ) ){
+											ret.push_back(iter->path().string());
+									}
+							} catch ( const std::exception & ex ){
+									std::cerr << ex.what() << std::endl;
+									continue;
+							}
+					}
+				}catch(const std::exception & ex){
+					
+				}
+				return ret;
+                
         }
 
 	//¼ÓÃÜº¯Êý

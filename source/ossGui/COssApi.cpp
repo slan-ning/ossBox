@@ -244,6 +244,7 @@ void COssApi::PutObject(std::string bucketName,std::string objName,ApiCallBack f
 
 	}
 	newName=weblib::Utf8Encode(newName);
+	newName=weblib::UrlEncode(newName);
 	std::string contentType=this->getContentType(objName);
 	
 
@@ -289,6 +290,7 @@ void COssApi::downObject(std::string bucketName,std::string objName,std::string 
 		path=path+filename;
 	}
 	objName=weblib::Utf8Encode(objName);
+	objName=weblib::UrlEncode(objName);
 	this->getOssSign("GET","/"+bucketName+"/"+objName);
 	this->mHttp.Get("http://"+bucketName+"."+*m_host+"/"+objName,boost::bind(&COssApi::recvGetObject,this,_1,path,func));
 }
@@ -330,6 +332,7 @@ void COssApi::initMultiUp(std::string bucketName,string objName,ApiCallBack func
 
 	string contentType=this->getContentType(objName);
 	objName=weblib::Utf8Encode(objName);
+	objName=weblib::UrlEncode(objName);
 	this->mHttp.Request.m_otherHeader["Content-Type"]=contentType;
 	this->getOssSign("POST","/"+bucketName+"/"+objName+"?uploads","",contentType);
 	this->mHttp.Post("http://"+bucketName+"."+*m_host+"/"+objName+"?uploads","",boost::bind(&COssApi::recvInitUp,this,_1,func));
@@ -364,6 +367,7 @@ void COssApi::PutObject(std::string bucketName,std::string objName,std::string p
 {
 	objName=weblib::replace_all(objName,"\\","/");
 	objName=weblib::Utf8Encode(objName);
+	objName=weblib::UrlEncode(objName);
 
 
 	string filePartId=weblib::convert<string>(partid+1);
@@ -405,6 +409,7 @@ void COssApi::CompleteUpload(std::string bucketName,std::string objectName,std::
 
 	pstr+="</CompleteMultipartUpload>";
 	objectName=weblib::Utf8Encode(objectName);
+	objectName=weblib::UrlEncode(objectName);
 	this->getOssSign("POST","/"+bucketName+"/"+objectName+"?uploadId="+upid,"","application/x-www-form-urlencoded");
 	this->mHttp.Post("http://"+bucketName+"."+*m_host+"/"+objectName+"?uploadId="+upid,pstr,boost::bind(&COssApi::recvCompleteUpload,this,_1,func));
 }
@@ -917,6 +922,7 @@ std::string  COssApi::getContentType(std::string path)
 
 void   COssApi::getOssSign(std::string method,std::string url,std::string contentMd5,std::string contentType,std::string ossHeader)
 {
+	url=weblib::UrlDecode(url);
 	std::string date=weblib::GetCurrentTimeGMT();
 	std::string signstr=method+"\n"+contentMd5+"\n"+contentType+"\n"+date+"\n";
 
