@@ -11,7 +11,8 @@ COssApi::COssApi(std::string accessid,std::string accesskey,std::string* host)
 {
 	this->mAccessId=accessid;
 	this->mAccessKey=accesskey;
-        this->m_host=host;
+    this->m_host=host;
+	this->mHttp.Request.m_userAgent="ossBox4.0";
 }
 
 COssApi::~COssApi()

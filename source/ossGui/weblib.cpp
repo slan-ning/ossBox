@@ -65,8 +65,8 @@ namespace weblib
 					if (!((hex >= 48 && hex <= 57) ||	//0-9
 						(hex >=97 && hex <= 122) ||	//a-z
 						(hex >=65 && hex <= 90) ||	//A-Z
-						//一些特殊符号及保留字[-_.]  [$&+,/:;=?@]
-						hex == 0x24 || hex == 0x26 || hex == 0x27
+						//一些特殊符号及保留字[-_.]  
+						hex == '-' || hex == '_' || hex == '.'
 						))
 					{
 						result += char(hex);
