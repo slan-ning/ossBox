@@ -880,7 +880,7 @@ void CossGuiDlg::OnMenuUpFolder()
 
 void CossGuiDlg::OnContact()
 {
-        ::ShellExecute(this->m_hWnd,"open","https://code.google.com/p/ossbox/",NULL,NULL,SW_SHOWNORMAL);
+        ::ShellExecute(this->m_hWnd,"open","http://www.xiaoqin.in",NULL,NULL,SW_SHOWNORMAL);
 }
 
 

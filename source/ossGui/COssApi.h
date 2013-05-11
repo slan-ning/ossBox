@@ -100,6 +100,11 @@ public:
 protected:
 	CHttp mHttp;
 private:
+	std::string mAccessId;
+	std::string mAccessKey;
+
+	void  getOssSign(std::string method,std::string url,std::string contentMd5="",std::string contentType="",std::string ossHeader="");
+
 public:
 	void ListBucket(ApiCallBack func);
 	void recvListBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);

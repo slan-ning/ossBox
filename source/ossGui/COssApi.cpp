@@ -9,6 +9,8 @@ using namespace std;
 
 COssApi::COssApi(std::string accessid,std::string accesskey,std::string* host)
 {
+	this->mAccessId=accessid;
+	this->mAccessKey=accesskey;
         this->m_host=host;
 }
 
@@ -21,7 +23,8 @@ COssApi::~COssApi()
 
 void COssApi::ListBucket(ApiCallBack func)
 {
-        this->mHttp.Get("http://"+*m_host,boost::bind(&COssApi::recvListBucket,this,_1,func));
+	this->getOssSign("GET","/");
+	this->mHttp.Get("http://"+*m_host,boost::bind(&COssApi::recvListBucket,this,_1,func));
 }
 
 void COssApi::recvListBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
@@ -49,13 +52,15 @@ void COssApi::recvListBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack 
 			func(respone->statusCode,sources,buckets);
 
 
-		}else
+		}else if(respone->statusCode==403)
+		{
+			func(403,"登录失败，ID或者key错误!",NULL);
+		}
+		else
 		{
 			func(respone->statusCode,"登录失败~",NULL);
 		}
 
-	}else if(respone->statusCode==403){
-		func(403,"登录失败，ID或者key错误!",NULL);
 	}
 	else
 	{
@@ -68,6 +73,7 @@ void COssApi::recvListBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack 
 void COssApi::PutBucket(std::string bucketName,ApiCallBack func,std::string acl)
 {
 	this->mHttp.Request.m_otherHeader["x-oss-acl"]=acl;
+	this->getOssSign("PUT","/","","","x-oss-acl="+acl+"\n");
         this->mHttp.Put("http://"+bucketName+"."+*m_host,"",boost::bind(&COssApi::recvPutBucket,this,_1,func));
 }
 
@@ -86,6 +92,7 @@ void COssApi::recvPutBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack f
 //获取bucket权限
 void COssApi::GetBucketAcl(std::string bucketName,ApiCallBack func)
 {
+	this->getOssSign("GET","/?acl");
 	this->mHttp.Get("http://"+bucketName+"."+*m_host+"/?acl",boost::bind(&COssApi::recvBucketAcl,this,_1,func));
 }
 
@@ -107,6 +114,7 @@ void COssApi::recvBucketAcl(boost::shared_ptr<CWebRespone> respone,ApiCallBack f
 //删除bucket
 void COssApi::DeleteBucket(std::string bucketName,ApiCallBack func)
 {
+	this->getOssSign("DELETE","/");
 	this->mHttp.Delete("http://"+bucketName+"."+*m_host+"/",boost::bind(&COssApi::recvBucketAcl,this,_1,func));
 }
 
@@ -144,6 +152,7 @@ void COssApi::ListObject(std::string bucketName,ApiCallBack func,std::string pre
 	}
 	url=weblib::Utf8Encode(url);
 
+	this->getOssSign("GET","/"+bucketName+"/");
 	this->mHttp.Get(url,boost::bind(&COssApi::recvListObject,this,_1,func,objects));
 }
 
@@ -235,9 +244,23 @@ void COssApi::PutObject(std::string bucketName,std::string objName,ApiCallBack f
 
 	}
 	newName=weblib::Utf8Encode(newName);
-	this->mHttp.Request.m_otherHeader["Content-Type"]=this->getContentType(objName);
+	std::string contentType=this->getContentType(objName);
+	
 
-	this->mHttp.Put("http://"+bucketName+"."+*m_host+"/"+newName,objName,boost::bind(&COssApi::recvPutObject,this,_1,func));
+	char * data=NULL;
+    size_t dataLen=0;
+	dataLen=weblib::fileToChar(objName,data,0,0);//size 传0表示整个文件大小
+	std::string md5=(dataLen>0)?weblib::char_md5(data,dataLen):"";
+
+	boost::shared_array<char> buf=boost::shared_array<char>(data);
+
+	this->getOssSign("PUT","/"+bucketName+"/"+newName,md5,contentType);
+	
+	this->mHttp.Request.m_otherHeader["Content-Md5"]=md5;
+	this->mHttp.Request.m_otherHeader["Content-Type"]=contentType;
+	this->mHttp.Request.m_otherHeader["Content-Length"]=weblib::convert<std::string>(dataLen);
+	this->mHttp.PutChar("http://"+bucketName+"."+*m_host+"/"+newName,buf,dataLen,boost::bind(&COssApi::recvPutObject,this,_1,func));
+	this->mHttp.Request.m_otherHeader["Content-Md5"]="";
 }
 
 void COssApi::recvPutObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
@@ -266,7 +289,7 @@ void COssApi::downObject(std::string bucketName,std::string objName,std::string 
 		path=path+filename;
 	}
 	objName=weblib::Utf8Encode(objName);
-
+	this->getOssSign("GET","/"+bucketName+"/"+objName);
 	this->mHttp.Get("http://"+bucketName+"."+*m_host+"/"+objName,boost::bind(&COssApi::recvGetObject,this,_1,path,func));
 }
 
@@ -304,9 +327,11 @@ void COssApi::recvGetObject(boost::shared_ptr<CWebRespone> respone,std::string n
 //初始化分块
 void COssApi::initMultiUp(std::string bucketName,string objName,ApiCallBack func )
 {
-	string  host=bucketName+".oss.aliyuncs.com";
+
+	string contentType=this->getContentType(objName);
 	objName=weblib::Utf8Encode(objName);
-	this->mHttp.Request.m_otherHeader["Content-Type"]=this->getContentType(objName);
+	this->mHttp.Request.m_otherHeader["Content-Type"]=contentType;
+	this->getOssSign("POST","/"+bucketName+"/"+objName+"?uploads","",contentType);
 	this->mHttp.Post("http://"+bucketName+"."+*m_host+"/"+objName+"?uploads","",boost::bind(&COssApi::recvInitUp,this,_1,func));
 
 }
@@ -337,15 +362,32 @@ void COssApi::recvInitUp(boost::shared_ptr<CWebRespone> respone,ApiCallBack func
 //上传object
 void COssApi::PutObject(std::string bucketName,std::string objName,std::string path,string upid,int partid,long pos,long size,ApiCallBack func)
 {
-	string  host=bucketName+".oss.aliyuncs.com";
-
 	objName=weblib::replace_all(objName,"\\","/");
 	objName=weblib::Utf8Encode(objName);
+
 
 	string filePartId=weblib::convert<string>(partid+1);
 	std::string url="http://"+bucketName+"."+*m_host+"/"+objName+"?partNumber="+filePartId+"&uploadId="+upid;
 
-	this->mHttp.Put(url,path,boost::bind(&COssApi::recvPutObject,this,_1,func));
+
+	std::string contentType=this->getContentType(objName);
+	
+
+	char * data=NULL;
+    size_t dataLen=0;
+	dataLen=weblib::fileToChar(path,data,pos,size);//size 传0表示整个文件大小
+	std::string md5=(dataLen>0)?weblib::char_md5(data,dataLen):"";
+
+	boost::shared_array<char> buf=boost::shared_array<char>(data);
+
+	this->getOssSign("PUT","/"+bucketName+"/"+objName+"?partNumber="+filePartId+"&uploadId="+upid,md5,contentType);
+	
+	this->mHttp.Request.m_otherHeader["Content-Md5"]=md5;
+	this->mHttp.Request.m_otherHeader["Content-Type"]=contentType;
+	this->mHttp.Request.m_otherHeader["Content-Length"]=weblib::convert<std::string>(dataLen);
+
+	this->mHttp.PutChar(url,buf,dataLen,boost::bind(&COssApi::recvPutObject,this,_1,func));
+	this->mHttp.Request.m_otherHeader["Content-Md5"]="";
 }
 
 void COssApi::CompleteUpload(std::string bucketName,std::string objectName,std::string upid,vector<UPTASK*> *tasklist,ApiCallBack func)
@@ -363,7 +405,7 @@ void COssApi::CompleteUpload(std::string bucketName,std::string objectName,std::
 
 	pstr+="</CompleteMultipartUpload>";
 	objectName=weblib::Utf8Encode(objectName);
-
+	this->getOssSign("POST","/"+bucketName+"/"+objectName+"?uploadId="+upid,"","application/x-www-form-urlencoded");
 	this->mHttp.Post("http://"+bucketName+"."+*m_host+"/"+objectName+"?uploadId="+upid,pstr,boost::bind(&COssApi::recvCompleteUpload,this,_1,func));
 }
 
@@ -381,6 +423,7 @@ void COssApi::recvCompleteUpload(boost::shared_ptr<CWebRespone> respone,ApiCallB
 
 void COssApi::abortMulitUp(std::string  bucketName,std::string objectName,std::string upid,ApiCallBack func)
 {
+	this->getOssSign("POST","/"+bucketName+"/"+objectName+"?uploadId="+upid);
 	this->mHttp.Delete("http://"+bucketName+"."+*m_host+"/?uploadId="+upid,boost::bind(&COssApi::recvabortMulitUp,this,_1,func));
 }
 
@@ -416,6 +459,7 @@ void COssApi::ListMulitUp(std::string bucketName,ApiCallBack func,std::string pr
 		objects->marker="";
 	}
 
+	this->getOssSign("GET","/"+bucketName+"/?uploads");
 	this->mHttp.Get(url,boost::bind(&COssApi::recvListListMulitUp,this,_1,objects,func));
 }
 
@@ -476,6 +520,8 @@ void COssApi::recvListListMulitUp(boost::shared_ptr<CWebRespone> respone,uploads
 //创建目录
 void COssApi::createDir(string bucketName,string dirname,ApiCallBack func)
 {
+	this->getOssSign("PUT","/"+bucketName+"/"+dirname+"/");
+	this->mHttp.Request.m_otherHeader["Content-Length"]="0";
 	this->mHttp.Put("http://"+bucketName+"."+*m_host+"/"+dirname+"/","",boost::bind(&COssApi::recvCreateDir,this,_1,func));
 }
 
@@ -493,7 +539,7 @@ void COssApi::recvCreateDir(boost::shared_ptr<CWebRespone> respone,ApiCallBack f
 
 void COssApi::deleteMulitFile(string bucketName,vector<string> filelist,ApiCallBack func)
 {
-        string pstr="<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete><Quiet>true</Quiet> ";
+    string pstr="<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete><Quiet>true</Quiet> ";
 
 	for(int i=0;i<filelist.size();i++)
 	{
@@ -502,17 +548,26 @@ void COssApi::deleteMulitFile(string bucketName,vector<string> filelist,ApiCallB
 		pstr+="</Object>";
 	}
 	pstr+="</Delete>";
+    pstr=weblib::Utf8Encode(pstr);
 
-        pstr=weblib::Utf8Encode(pstr);
+	char * data=new char [pstr.length()];
+	memset(data,0,pstr.length());
+	memcpy(data,pstr.c_str(),pstr.length());
 
-        this->mHttp.Post("http://"+bucketName+"."+*m_host+"/?delete",pstr,boost::bind(&COssApi::recvdeleteMulitFile,this,_1,func));
+	std::string md5=weblib::char_md5(data,pstr.length());
+	delete[] data;
 
+	this->mHttp.Request.m_otherHeader["Content-Md5"]=md5;
+
+	this->getOssSign("POST","/"+bucketName+"/?delete",md5,"application/x-www-form-urlencoded");
+    this->mHttp.Post("http://"+bucketName+"."+*m_host+"/?delete",pstr,boost::bind(&COssApi::recvdeleteMulitFile,this,_1,func));
+	this->mHttp.Request.m_otherHeader["Content-Md5"]="";
 
 }
 
 void COssApi::recvdeleteMulitFile(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
-        if(respone->msg.get())
+    if(respone->msg.get())
 	{
 		std::string sources=respone->msg.get();
 		func(respone->statusCode,sources,NULL);
@@ -858,5 +913,20 @@ std::string  COssApi::getContentType(std::string path)
 	if(typestr=="")typestr="application/octet-stream";
 	return typestr;
 
+}
+
+void   COssApi::getOssSign(std::string method,std::string url,std::string contentMd5,std::string contentType,std::string ossHeader)
+{
+	std::string date=weblib::GetCurrentTimeGMT();
+	std::string signstr=method+"\n"+contentMd5+"\n"+contentType+"\n"+date+"\n";
+
+        std::map<std::string,std::string>::iterator it;
+
+        signstr+=ossHeader+url;
+
+        std::string authStr= weblib::ossAuth(this->mAccessKey,signstr);
+
+	this->mHttp.Request.m_otherHeader["Date"]=date;
+	this->mHttp.Request.m_otherHeader["Authorization"]=std::string("OSS ")+this->mAccessId+":"+authStr;
 }
 

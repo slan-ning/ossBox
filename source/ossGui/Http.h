@@ -22,6 +22,7 @@ public:
 	void Get(std::string url,HttpCallBack cb);
 	void Delete(std::string url,HttpCallBack cb);
 	void Put(std::string url,std::string data,HttpCallBack cb);
+	void PutChar(std::string url,boost::shared_array<char> buf,size_t dataLen,HttpCallBack cb);
 	void Post(std::string url,std::string data,HttpCallBack cb);
 	void Get(std::string ip,std::string port,std::string	url,HttpCallBack cb);
 	void Post(std::string ip,std::string port,std::string url,std::string data,HttpCallBack cb);

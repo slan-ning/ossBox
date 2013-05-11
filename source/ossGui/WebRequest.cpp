@@ -41,15 +41,15 @@ bool CWebRequest::BuildBody(std::string method,std::string url, boost::shared_ar
 
 
 	std::string body;
-	if(method=="POST")
+	if(method=="POST" &&this->m_otherHeader["Content-Type"]=="")
 	{
+		this->m_otherHeader["Content-Type"]="application/x-www-form-urlencoded";
+	}
+
+	if(method=="POST"|| dataLen>0){
 		char len[20];
 		::sprintf_s(len,"%d",dataLen);
-		this->m_otherHeader["Content-Type"]="application/x-www-form-urlencoded";
 		this->m_otherHeader["Content-Length"]=std::string(len);
-	}else{
-		this->m_otherHeader["Content-Type"]="";
-		this->m_otherHeader["Content-Length"]="";
 	}
 
 	body=method+" "+this->m_resources+" HTTP/1.1\r\n";
@@ -87,6 +87,9 @@ bool CWebRequest::BuildBody(std::string method,std::string url, boost::shared_ar
 
 	this->m_body=newdata;
 	this->m_bodySize=len;
+
+	this->m_otherHeader["Content-Type"]="";
+	this->m_otherHeader["Content-Length"]="";
 	
 	return true;
 }

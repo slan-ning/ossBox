@@ -6,12 +6,12 @@ namespace weblib
 {
 	std::string weblib::Utf8Encode(const std::string& szToEncode)
 	{
-		return boost::locale::conv::to_utf<char>(szToEncode,"GBK");
+		return boost::locale::conv::to_utf<char>(szToEncode,"gb2312");
 	}
 
         std::string weblib::Utf8Decode(const std::string& szToDecode)
 	{
-		return boost::locale::conv::from_utf(szToDecode,"GBK");
+		return boost::locale::conv::from_utf(szToDecode,"gb2312");
 	}
 
 	std::string weblib::UrlEncode(const std::string& szToEncode)
