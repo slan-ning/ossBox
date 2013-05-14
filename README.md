@@ -5,7 +5,7 @@ ossBox
 a free aliyun oss client
 
 一个功能强大的阿里云oss客户端，使用bsd开源协议，你可以自由使用本软件与代码。 本软件为阿里云OSS开放存储服务的第三方客户端。 实现了上传，下载，删除，新建文件夹等功能。
-下载地址：http://oss-box.oss.aliyuncs.com/ossBox0.4.rar
+下载地址：http://oss.aliyuncs.com/oss-box/ossbox0.4.rar  
 
 
 0.4版本更新日志：
