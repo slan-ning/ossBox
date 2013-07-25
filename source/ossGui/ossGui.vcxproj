@@ -112,6 +112,7 @@
     <ClInclude Include="COssApi.h" />
     <ClInclude Include="Http.h" />
     <ClInclude Include="HttpClient.h" />
+    <ClInclude Include="IniFile.h" />
     <ClInclude Include="InputBox.h" />
     <ClInclude Include="ossGui.h" />
     <ClInclude Include="ossGuiDlg.h" />
@@ -128,6 +129,7 @@
     <ClCompile Include="COssApi.cpp" />
     <ClCompile Include="Http.cpp" />
     <ClCompile Include="HttpClient.cpp" />
+    <ClCompile Include="IniFile.cpp" />
     <ClCompile Include="InputBox.cpp" />
     <ClCompile Include="ossGui.cpp" />
     <ClCompile Include="ossGuiDlg.cpp" />
@@ -145,6 +147,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
+    <None Include="ClassDiagram1.cd" />
     <None Include="res\ossGui.rc2" />
   </ItemGroup>
   <ItemGroup>

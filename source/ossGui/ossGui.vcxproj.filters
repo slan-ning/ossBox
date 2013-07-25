@@ -63,6 +63,9 @@
     <ClInclude Include="WebRespone.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="IniFile.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ossGui.cpp">
@@ -101,6 +104,9 @@
     <ClCompile Include="WebRespone.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="IniFile.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ossGui.rc">
@@ -112,6 +118,7 @@
       <Filter>资源文件</Filter>
     </None>
     <None Include="ClassDiagram.cd" />
+    <None Include="ClassDiagram1.cd" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\ossGui.ico">

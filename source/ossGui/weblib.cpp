@@ -9,7 +9,7 @@ namespace weblib
 		return boost::locale::conv::to_utf<char>(szToEncode,"gb2312");
 	}
 
-        std::string weblib::Utf8Decode(const std::string& szToDecode)
+     std::string weblib::Utf8Decode(const std::string& szToDecode)
 	{
 		return boost::locale::conv::from_utf(szToDecode,"gb2312");
 	}
@@ -306,5 +306,16 @@ namespace weblib
                 filestr.close();
                 return size;
         }
+
+	std::string weblib::GetPath()
+	{
+		 CString path; 
+		GetModuleFileName(NULL,path.GetBufferSetLength(MAX_PATH+1),MAX_PATH);
+		path.ReleaseBuffer(); 
+		int pos = path.ReverseFind('\\'); 
+		path = path.Left(pos); 
+
+		return path.GetBuffer();
+	}
 
 }

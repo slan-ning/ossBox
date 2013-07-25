@@ -55,4 +55,6 @@ namespace weblib
 	std::string	ossAuth(std::string key,std::string data);//生成oss认证串
 	std::string	GetFormInputValue(std::string strs,std::string name);
 
+	std::string GetPath();
+
 }

@@ -12,6 +12,7 @@
 #include <boost/filesystem.hpp>
 #include "InputBox.h"
 #include <boost/algorithm/string.hpp>
+#include "IniFile.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -174,35 +175,43 @@ BOOL CossGuiDlg::OnInitDialog()
 
         this->m_host=new std::string("oss.aliyuncs.com");
         //获取用户信息
-        std::ifstream userfile("c:\\oss.dat");
-        if(userfile.is_open())
-        {
-                std::string username;
-                std::string password;
-                std::string isLan="0";
-                std::getline(userfile,username);
-                std::getline(userfile,password);
-                std::getline(userfile,isLan);
-                userfile.close();
-                if(username!="" && password!="")
-                {
-                        boost::trim(username);
-                        boost::trim(password);
-                        this->GetDlgItem(IDC_EDIT1)->SetWindowText(username.c_str());
-                        this->GetDlgItem(IDC_EDIT2)->SetWindowText(password.c_str());
-                        CButton* pBtn = (CButton*)GetDlgItem(IDC_CHECK1);
-                        pBtn->SetCheck(1);
-                        CButton* pLanBtn = (CButton*)GetDlgItem(IDC_CHECK2);
-                        if(isLan=="1")
-                        {
-                                delete this->m_host;
-                                this->m_host=new std::string("oss-internal.aliyuncs.com");
-                                pLanBtn->SetCheck(1);
-                        }
+		std::string path=weblib::GetPath()+"/oss.dll";
+		CIniFile cIniFile= CIniFile(path.c_str());
 
-                }
+        
+		CString username;
+        CString password;
+        CString isLan="0";
+		CString title;
+		CString bucket;
+
+		cIniFile.GetProfileStringA("ossbox","username",username);
+		cIniFile.GetProfileStringA("ossbox","password",password);
+		cIniFile.GetProfileStringA("ossbox","isLan",isLan);
+		cIniFile.GetProfileStringA("ossbox","title",title);
+		cIniFile.GetProfileStringA("ossbox","bucket",bucket);
+
+		SetWindowText(title);//调用SETWINDOWTEXT
+        if(username!="" && password!="")
+        {
+			username=username.Trim();
+			password=password.Trim();
+            this->GetDlgItem(IDC_EDIT1)->SetWindowText(username);
+            this->GetDlgItem(IDC_EDIT2)->SetWindowText(password);
+			this->GetDlgItem(IDC_EDIT_BUCKET)->SetWindowText(bucket);
+            CButton* pBtn = (CButton*)GetDlgItem(IDC_CHECK1);
+            pBtn->SetCheck(1);
+            CButton* pLanBtn = (CButton*)GetDlgItem(IDC_CHECK2);
+            if(isLan=="1")
+            {
+                    delete this->m_host;
+                    this->m_host=new std::string("oss-internal.aliyuncs.com");
+                    pLanBtn->SetCheck(1);
+            }
+
         }
-	this->m_combox.ResetContent();
+        
+		this->m_combox.ResetContent();
 
         
 
@@ -270,24 +279,25 @@ void CossGuiDlg::OnBnClickedButton2()
 
         if(!uname.IsEmpty() && !upass.IsEmpty())
         {
-                std::ofstream userfile("c:\\oss.dat");
-                if(BST_CHECKED == IsDlgButtonChecked( IDC_CHECK1 ))
-                {
-                        std::string isLan="0";
-                        if(BST_CHECKED == IsDlgButtonChecked( IDC_CHECK2 )) isLan="1";
-                        userfile<<uname.GetBuffer()<<"\n";
-                        userfile<<upass.GetBuffer()<<"\n";
-                        userfile<<isLan<<"\n";
-                }
-                userfile.close();
+			std::string path=weblib::GetPath()+"/oss.dll";
+			CIniFile cIniFile= CIniFile(path.c_str());
 
-                //列出所有bucket
-                if(this->m_sdk==NULL)
-                {
-                        m_sdk=new COssSdk(uname.GetBuffer(),upass.GetBuffer(),this->m_host);
-                }
+			CString isLan="0";
 
-                this->m_sdk->ListBucket(boost::bind(&CossGuiDlg::recvListBucket,this,_1,_2,_3));
+            if(BST_CHECKED == IsDlgButtonChecked( IDC_CHECK1 ))
+            {
+                    std::string isLan="0";
+                    if(BST_CHECKED == IsDlgButtonChecked( IDC_CHECK2 )) isLan="1";
+					cIniFile.SetProfileString("ossbox","isLan",isLan.c_str());
+            }
+
+            //列出所有bucket
+            if(this->m_sdk==NULL)
+            {
+                    m_sdk=new COssSdk(uname.GetBuffer(),upass.GetBuffer(),this->m_host);
+            }
+
+            this->m_sdk->ListBucket(boost::bind(&CossGuiDlg::recvListBucket,this,_1,_2,_3));
 
         }else
         {
@@ -348,15 +358,34 @@ string CossGuiDlg::getTimeMsg(string msg)
 //列出bucket的文件列表
 void CossGuiDlg::OnBnClickedButton1()
 {
-        this->m_prefix="";
-	if(this->m_combox.GetCount()<=0)
+    this->m_prefix="";
+
+	CString uname;
+    CString upass;
+
+    this->GetDlgItem(IDC_EDIT1)->GetWindowTextA(uname);
+    this->GetDlgItem(IDC_EDIT2)->GetWindowTextA(upass);
+
+	
+    if(uname.IsEmpty() || upass.IsEmpty())
+	{
+		this->MessageBox("id 和key不能为空!");
+		return;
+	}
+
+	if(this->m_sdk==NULL)
+    {
+        m_sdk=new COssSdk(uname.GetBuffer(),upass.GetBuffer(),this->m_host);
+    }
+	this->listObject();
+	/*if(this->m_combox.GetCount()<=0)
 	{
 		this->MessageBox("Bucket不能为空!");
 	}
 	else
 	{
 		this->listObject();
-	}
+	}*/
 
 }
 
@@ -427,7 +456,9 @@ void CossGuiDlg::recvListObject(int code, std::string msg, void* param)
                 this->m_listview.InsertItem(0,"..");
 
 
-        }
+        }else{
+			this->MessageBox("登录失败!");
+		}
 
 }
 
@@ -485,7 +516,8 @@ void CossGuiDlg::listObject(std::string prefix, std::string delitimer)
 {
 
         CString bucketname;
-        this->m_combox.GetLBText(this->m_combox.GetCurSel(),bucketname);
+        //this->m_combox.GetLBText(this->m_combox.GetCurSel(),bucketname);
+		this->GetDlgItem(IDC_EDIT_BUCKET)->GetWindowTextA(bucketname);
         if(bucketname!="")
         {
                 this->m_bkName=bucketname.GetBuffer();
@@ -1162,22 +1194,29 @@ void CossGuiDlg::OnCancel()
        
         CString uname;
         CString upass;
+		CString bucket;
 
         this->GetDlgItem(IDC_EDIT1)->GetWindowTextA(uname);
         this->GetDlgItem(IDC_EDIT2)->GetWindowTextA(upass);
+		this->GetDlgItem(IDC_EDIT_BUCKET)->GetWindowTextA(bucket);
 
         if(!uname.IsEmpty() && !upass.IsEmpty())
         {
-                std::ofstream userfile("c:\\oss.dat");
+				std::string path=weblib::GetPath()+"/oss.dll";
+				CIniFile cIniFile= CIniFile(path.c_str());
+
                 if(BST_CHECKED == IsDlgButtonChecked( IDC_CHECK1 ))
                 {
                         std::string isLan="0";
                         if(BST_CHECKED == IsDlgButtonChecked( IDC_CHECK2 )) isLan="1";
-                        userfile<<uname.GetBuffer()<<"\n";
-                        userfile<<upass.GetBuffer()<<"\n";
-                        userfile<<isLan<<"\n";
+
+						cIniFile.SetProfileString("ossbox","username",uname);
+						cIniFile.SetProfileString("ossbox","password",upass);
+						cIniFile.SetProfileString("ossbox","isLan",isLan.c_str());
+						
+						cIniFile.SetProfileString("ossbox","bucket",bucket);
+
                 }
-                userfile.close();
         }
 
         CDialogEx::OnCancel();
