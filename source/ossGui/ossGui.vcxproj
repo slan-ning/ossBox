@@ -107,27 +107,28 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CIoPool.h" />
-    <ClInclude Include="common.h" />
     <ClInclude Include="COssApi.h" />
-    <ClInclude Include="Http.h" />
-    <ClInclude Include="HttpClient.h" />
+    <ClInclude Include="echttp\client.hpp" />
+    <ClInclude Include="echttp\common.hpp" />
+    <ClInclude Include="echttp\function.hpp" />
+    <ClInclude Include="echttp\http.hpp" />
+    <ClInclude Include="echttp\iopool.hpp" />
+    <ClInclude Include="echttp\reader.hpp" />
+    <ClInclude Include="echttp\request.hpp" />
+    <ClInclude Include="echttp\respone.hpp" />
     <ClInclude Include="InputBox.h" />
     <ClInclude Include="ossGui.h" />
     <ClInclude Include="ossGuiDlg.h" />
     <ClInclude Include="OssSdk.h" />
+    <ClInclude Include="oss\auth.hpp" />
+    <ClInclude Include="oss\client.hpp" />
+    <ClInclude Include="oss\global.hpp" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="weblib.h" />
-    <ClInclude Include="WebRequest.h" />
-    <ClInclude Include="WebRespone.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CIoPool.cpp" />
     <ClCompile Include="COssApi.cpp" />
-    <ClCompile Include="Http.cpp" />
-    <ClCompile Include="HttpClient.cpp" />
     <ClCompile Include="InputBox.cpp" />
     <ClCompile Include="ossGui.cpp" />
     <ClCompile Include="ossGuiDlg.cpp" />
@@ -136,9 +137,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="weblib.cpp" />
-    <ClCompile Include="WebRequest.cpp" />
-    <ClCompile Include="WebRespone.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ossGui.rc" />
