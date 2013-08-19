@@ -23,143 +23,114 @@ namespace echttp
 
 		boost::shared_ptr<respone> Get(std::string url)
 		{
-			boost::shared_array<char> data;
-			this->Request.BuildBody("GET",url,data,0);
-
-			client client(*m_ioServ);
-
-			boost::shared_ptr<ClientResult> result=client.Send(&this->Request);
-			boost::shared_ptr<respone> respone=this->buildRespone(result);
-
-			return respone;
-
+			return this->_get("GET",url);
 		}
+
+        boost::shared_ptr<respone> Get(std::string ip,std::string port,std::string url)
+		{
+			return this->_get("GET",ip,port,url);
+		}
+
+        void Get(std::string url,HttpCallBack cb)
+		{
+			this->_get("GET",url,cb);
+			return ;
+		}
+
+        void Get(std::string ip,std::string port,std::string url,HttpCallBack cb)
+		{
+            this->_get("GET",ip,port,url,cb);
+			return ;
+		}
+
+        boost::shared_ptr<respone> Delete(std::string url)
+		{
+			return this->_get("DELETE",url);
+		}
+
+        boost::shared_ptr<respone> Delete(std::string ip,std::string port,std::string url)
+		{
+			return this->_get("DELETE",ip,port,url);
+		}
+
+        void Delete(std::string url,HttpCallBack cb)
+		{
+            this->_get("DELETE",url,cb);
+			return ;
+		}
+
+        void Delete(std::string ip,std::string port,std::string url,HttpCallBack cb)
+		{
+            this->_get("DELETE",ip,port,url,cb);
+			return ;
+		}
+
 
 		boost::shared_ptr<respone> Post(std::string url,std::string data)
 		{
-			char * dataAry=new char [data.length()];
-			memset(dataAry,0,data.length());
-			memcpy(dataAry,data.c_str(),data.length());
-
-			boost::shared_array<char> postdata(dataAry);
-			this->Request.BuildBody("POST",url,postdata,data.length());
-
-			client client(*m_ioServ);
-
-			boost::shared_ptr<ClientResult> result=client.Send(&this->Request);
-			boost::shared_ptr<respone> respone=this->buildRespone(result);
-
-			return respone;
-		}
-
-		boost::shared_ptr<respone> Get(std::string ip,std::string port,std::string url)
-		{
-			boost::shared_array<char> data;
-			this->Request.BuildProxyBody("GET",ip,port,url,data,0);
-
-			client client(*m_ioServ);
-
-			boost::shared_ptr<ClientResult> result=client.Send(&this->Request);
-			boost::shared_ptr<respone> respone=this->buildRespone(result);
-
-			return respone;
+			return this->_post("POST",url,data);
 		}
 
 		boost::shared_ptr<respone> Post(std::string ip,std::string port,std::string url,std::string data)
 		{
-			char * dataAry=new char [data.length()];
-			memset(dataAry,0,data.length());
-			memcpy(dataAry,data.c_str(),data.length());
-
-			boost::shared_array<char> postdata(dataAry);
-			this->Request.BuildProxyBody("POST",ip,port,url,postdata,data.length());
-
-			client client(*m_ioServ);
-
-			boost::shared_ptr<ClientResult> result=client.Send(&this->Request);
-			boost::shared_ptr<respone> respone=this->buildRespone(result);
-
-			return respone;
-		}
-
-		void Delete(std::string url,HttpCallBack cb)
-		{
-			boost::shared_array<char> data;
-			this->Request.BuildBody("DELETE",url,data,0);
-
-			client *httpClient=new client(*m_ioServ);
-			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
-			return ;
-		}
-
-		void Put(std::string url,std::string data,HttpCallBack cb)
-		{
-			char * dataAry=new char [data.length()];
-			memset(dataAry,0,data.length());
-			memcpy(dataAry,data.c_str(),data.length());
-
-			boost::shared_array<char> postdata(dataAry);
-			this->Request.BuildBody("PUT",url,postdata,data.length());
-
-			client *httpClient=new client(*m_ioServ);
-			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
-			return ;
-		}
-
-		void PutChar(std::string url,boost::shared_array<char> buf,size_t dataLen,HttpCallBack cb)
-		{
-			this->Request.BuildBody("PUT",url,buf,dataLen);
-			client *httpClient=new client(*m_ioServ);
-			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
-			return ;
-		}
-
-
-		void Get(std::string url,HttpCallBack cb)
-		{
-			boost::shared_array<char> data;
-			this->Request.BuildBody("GET",url,data,0);
-
-			client *httpClient=new client(*m_ioServ);
-			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
-			return ;
+			return this->_post("POST",ip,port,url,data);
 		}
 
 		void Post(std::string url,std::string data,HttpCallBack cb)
 		{
-			char * dataAry=new char [data.length()];
-			memset(dataAry,0,data.length());
-			memcpy(dataAry,data.c_str(),data.length());
-
-			boost::shared_array<char> postdata(dataAry);
-			this->Request.BuildBody("POST",url,postdata,data.length());
-
-			client *httpClient=new client(*m_ioServ);
-			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
-			return ;
-		}
-
-		void Get(std::string ip,std::string port,std::string	url,HttpCallBack cb)
-		{
-			boost::shared_array<char> data;
-			this->Request.BuildProxyBody("GET",ip,port,url,data,0);
-
-			client *httpClient=new client(*m_ioServ);
-			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
+			this->_post("POST",url,data,cb);
 			return ;
 		}
 
 		void Post(std::string ip,std::string port,std::string url,std::string data,HttpCallBack cb)
 		{
-			char * dataAry=new char [data.length()];
-			memset(dataAry,0,data.length());
-			memcpy(dataAry,data.c_str(),data.length());
+			this->_post("POST",ip,port,url,data,cb);
+			return ;
+		}
 
-			boost::shared_array<char> postdata(dataAry);
-			this->Request.BuildProxyBody("POST",ip,port,url,postdata,data.length());
+        void Post(std::string url,boost::shared_array<char> data,size_t dataLen,HttpCallBack cb)
+		{
+			this->_post("POST",url,data,dataLen,cb);
+			return ;
+		}
 
-			client *httpClient=new client(*m_ioServ);
-			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
+		void Post(std::string ip,std::string port,std::string url,boost::shared_array<char> data,size_t dataLen,HttpCallBack cb)
+		{
+			this->_post("POST",ip,port,url,data,dataLen,cb);
+			return ;
+		}
+
+		boost::shared_ptr<respone> Put(std::string url,std::string data)
+		{
+			return this->_post("PUT",url,data);
+		}
+
+		boost::shared_ptr<respone> Put(std::string ip,std::string port,std::string url,std::string data)
+		{
+			return this->_post("PUT",ip,port,url,data);
+		}
+
+		void Put(std::string url,std::string data,HttpCallBack cb)
+		{
+			this->_post("PUT",url,data,cb);
+			return ;
+		}
+
+		void Put(std::string ip,std::string port,std::string url,std::string data,HttpCallBack cb)
+		{
+			this->_post("PUT",ip,port,url,data,cb);
+			return ;
+		}
+
+        void Put(std::string url,boost::shared_array<char> data,size_t dataLen,HttpCallBack cb)
+		{
+			this->_post("PUT",url,data,dataLen,cb);
+			return ;
+		}
+
+		void Put(std::string ip,std::string port,std::string url,boost::shared_array<char> data,size_t dataLen,HttpCallBack cb)
+		{
+			this->_post("PUT",ip,port,url,data,dataLen,cb);
 			return ;
 		}
 
@@ -256,6 +227,141 @@ namespace echttp
 			}
 			return httpRespone;
 		}
+
+
+        //类似get方法,delete之类的
+        boost::shared_ptr<respone> _get(std::string method,std::string url)
+		{
+			boost::shared_array<char> data;
+			this->Request.BuildBody(method,url,data,0);
+
+			client client(*m_ioServ);
+
+			boost::shared_ptr<ClientResult> result=client.Send(&this->Request);
+			boost::shared_ptr<respone> respone=this->buildRespone(result);
+
+			return respone;
+
+		}
+
+        //代理访问类似get方法
+        boost::shared_ptr<respone> _get(std::string method,std::string ip,std::string port,std::string url)
+		{
+			boost::shared_array<char> data;
+			this->Request.BuildProxyBody(method,ip,port,url,data,0);
+
+			client client(*m_ioServ);
+
+			boost::shared_ptr<ClientResult> result=client.Send(&this->Request);
+			boost::shared_ptr<respone> respone=this->buildRespone(result);
+
+			return respone;
+		}
+
+        void _get(std::string method,std::string url,HttpCallBack cb)
+		{
+			boost::shared_array<char> data;
+			this->Request.BuildBody(method,url,data,0);
+
+			client *httpClient=new client(*m_ioServ);
+			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
+			return ;
+		}
+
+        void _get(std::string method,std::string ip,std::string port,std::string url,HttpCallBack cb)
+		{
+			boost::shared_array<char> data;
+			this->Request.BuildProxyBody(method,ip,port,url,data,0);
+
+			client *httpClient=new client(*m_ioServ);
+			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
+			return ;
+		}
+
+        //类似post方法
+        boost::shared_ptr<respone> _post(std::string method,std::string url,std::string data)
+		{
+			char * dataAry=new char [data.length()];
+			memset(dataAry,0,data.length());
+			memcpy(dataAry,data.c_str(),data.length());
+
+			boost::shared_array<char> postdata(dataAry);
+			this->Request.BuildBody(method,url,postdata,data.length());
+
+			client client(*m_ioServ);
+
+			boost::shared_ptr<ClientResult> result=client.Send(&this->Request);
+			boost::shared_ptr<respone> respone=this->buildRespone(result);
+
+			return respone;
+		}
+
+        //代理访问类似post方法
+        boost::shared_ptr<respone> _post(std::string method,std::string ip,std::string port,std::string url,std::string data)
+		{
+			char * dataAry=new char [data.length()];
+			memset(dataAry,0,data.length());
+			memcpy(dataAry,data.c_str(),data.length());
+
+			boost::shared_array<char> postdata(dataAry);
+			this->Request.BuildProxyBody(method,ip,port,url,postdata,data.length());
+
+			client client(*m_ioServ);
+
+			boost::shared_ptr<ClientResult> result=client.Send(&this->Request);
+			boost::shared_ptr<respone> respone=this->buildRespone(result);
+
+			return respone;
+		}
+
+        void _post(std::string method,std::string url,std::string data,HttpCallBack cb)
+		{
+			char * dataAry=new char [data.length()];
+			memset(dataAry,0,data.length());
+			memcpy(dataAry,data.c_str(),data.length());
+
+			boost::shared_array<char> postdata(dataAry);
+			this->Request.BuildBody(method,url,postdata,data.length());
+
+			client *httpClient=new client(*m_ioServ);
+			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
+			return ;
+		}
+
+
+		void _post(std::string method,std::string ip,std::string port,std::string url,std::string data,HttpCallBack cb)
+		{
+			char * dataAry=new char [data.length()];
+			memset(dataAry,0,data.length());
+			memcpy(dataAry,data.c_str(),data.length());
+
+			boost::shared_array<char> postdata(dataAry);
+			this->Request.BuildProxyBody(method,ip,port,url,postdata,data.length());
+
+			client *httpClient=new client(*m_ioServ);
+			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
+			return ;
+		}
+
+        void _post(std::string method,std::string url,boost::shared_array<char> data,size_t dataLen,HttpCallBack cb)
+		{
+			this->Request.BuildBody(method,url,data,dataLen);
+			client *httpClient=new client(*m_ioServ);
+			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
+			return ;
+		}
+
+        void _post(std::string method,std::string ip,std::string port,std::string url,boost::shared_array<char> data,size_t dataLen,HttpCallBack cb)
+		{
+			
+			this->Request.BuildProxyBody(method,ip,port,url,data,dataLen);
+
+			client *httpClient=new client(*m_ioServ);
+			httpClient->Send(&this->Request,boost::bind(&http::MessageBack,this,_1,cb,httpClient));
+			return ;
+		}
+
+
 
 	};
 

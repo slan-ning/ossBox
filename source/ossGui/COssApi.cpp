@@ -251,7 +251,7 @@ void COssApi::PutObject(std::string bucketName,std::string objName,ApiCallBack f
 
 	char * data=NULL;
     size_t dataLen=0;
-	dataLen=weblib::fileToChar(objName,data,0,0);//size 传0表示整个文件大小
+	dataLen=oss::fileToChar(objName,data,0,0);//size 传0表示整个文件大小
 	std::string md5=(dataLen>0)?weblib::char_md5(data,dataLen):"";
 
 	boost::shared_array<char> buf=boost::shared_array<char>(data);
@@ -927,11 +927,11 @@ void   COssApi::getOssSign(std::string method,std::string url,std::string conten
 	std::string date=weblib::GetCurrentTimeGMT();
 	std::string signstr=method+"\n"+contentMd5+"\n"+contentType+"\n"+date+"\n";
 
-        std::map<std::string,std::string>::iterator it;
+    std::map<std::string,std::string>::iterator it;
 
-        signstr+=ossHeader+url;
+    signstr+=ossHeader+url;
 
-        std::string authStr= weblib::ossAuth(this->mAccessKey,signstr);
+    std::string authStr= weblib::ossAuth(this->mAccessKey,signstr);
 
 	this->mHttp.Request.m_otherHeader["Date"]=date;
 	this->mHttp.Request.m_otherHeader["Authorization"]=std::string("OSS ")+this->mAccessId+":"+authStr;
