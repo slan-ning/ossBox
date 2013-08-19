@@ -1,6 +1,8 @@
 #pragma once
 #include <boost\function.hpp>
 #include "..\echttp\respone.hpp"
+#include "../echttp/http.hpp"
+#include "global.hpp"
 
 namespace oss
 {
@@ -9,7 +11,7 @@ namespace oss
     public:
         typedef boost::function<void(int,std::string,void*)> ApiCallBack;
 
-        client();
+        client(std::string accessid,std::string accesskey,std::string* host);
         ~client();
 
         void ListBucket(ApiCallBack func);
@@ -52,17 +54,12 @@ namespace oss
         void deleteMulitFile(string bucketName,vector<string> filelist,ApiCallBack func);
         void recvdeleteMulitFile(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-
-
     private:
+        config mConfig;
+        echttp::http mHttp;
+
+        void BuildOssSign(std::string method,std::string url,std::string contentMd5,std::string contentType,std::string ossHeader);
 
     };
 
-    client::client()
-    {
-    }
-
-    client::~client()
-    {
-    }
 }

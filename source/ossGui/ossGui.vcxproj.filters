@@ -78,7 +78,10 @@
     <ClInclude Include="oss\auth.hpp">
       <Filter>oss</Filter>
     </ClInclude>
-    <ClInclude Include="oss\client.hpp">
+    <ClInclude Include="oss\result.hpp">
+      <Filter>oss</Filter>
+    </ClInclude>
+    <ClInclude Include="oss\client.h">
       <Filter>oss</Filter>
     </ClInclude>
   </ItemGroup>
@@ -100,6 +103,9 @@
     </ClCompile>
     <ClCompile Include="InputBox.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="oss\client.cpp">
+      <Filter>oss</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

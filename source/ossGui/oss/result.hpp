@@ -1,0 +1,7 @@
+namespace oss
+{
+    namespace result
+    {
+        
+    }
+}

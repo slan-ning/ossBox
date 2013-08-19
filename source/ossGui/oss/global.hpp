@@ -10,6 +10,31 @@
 
 namespace oss
 {
+    class config
+    {
+        public:
+
+            std::string accessid;
+            std::string accesskey;
+            std::string* host;
+
+            std::string get(std::string key)
+            {
+                return cfg[key];
+            }
+
+            bool set(std::string key,std::string value)
+            {
+                cfg[key]=value;
+                return true;
+            }
+
+
+        private:
+            std::map<std::string,std::string> cfg;
+
+    };
+    
     const std::vector<std::string>& DirFiles(const std::string& rootPath,std::vector<std::string>& container)
 	{
         namespace fs = boost::filesystem;
