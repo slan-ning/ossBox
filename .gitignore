@@ -24,3 +24,6 @@ source/Release
 *.suo
 source/ossGui/Debug
 source/ossGui/Release
+
+source/ApiDemo/Debug
+source/ApiDemo/Release

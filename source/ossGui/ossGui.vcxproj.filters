@@ -14,10 +14,10 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
     <Filter Include="echttp">
-      <UniqueIdentifier>{844c11e6-b321-44a1-a040-351e9995322d}</UniqueIdentifier>
+      <UniqueIdentifier>{db1adc02-57e4-47ee-953f-0659ed0d2602}</UniqueIdentifier>
     </Filter>
     <Filter Include="oss">
-      <UniqueIdentifier>{cf013c21-74e3-47b6-84e1-c3abe36e3e93}</UniqueIdentifier>
+      <UniqueIdentifier>{823e5304-e858-4788-b0c2-d1aab61255fc}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -48,40 +48,40 @@
     <ClInclude Include="InputBox.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="echttp\client.hpp">
+    <ClInclude Include="..\echttp\client.hpp">
       <Filter>echttp</Filter>
     </ClInclude>
-    <ClInclude Include="echttp\common.hpp">
+    <ClInclude Include="..\echttp\common.hpp">
       <Filter>echttp</Filter>
     </ClInclude>
-    <ClInclude Include="echttp\function.hpp">
+    <ClInclude Include="..\echttp\function.hpp">
       <Filter>echttp</Filter>
     </ClInclude>
-    <ClInclude Include="echttp\iopool.hpp">
+    <ClInclude Include="..\echttp\http.hpp">
       <Filter>echttp</Filter>
     </ClInclude>
-    <ClInclude Include="echttp\reader.hpp">
+    <ClInclude Include="..\echttp\iopool.hpp">
       <Filter>echttp</Filter>
     </ClInclude>
-    <ClInclude Include="echttp\request.hpp">
+    <ClInclude Include="..\echttp\reader.hpp">
       <Filter>echttp</Filter>
     </ClInclude>
-    <ClInclude Include="echttp\respone.hpp">
+    <ClInclude Include="..\echttp\request.hpp">
       <Filter>echttp</Filter>
     </ClInclude>
-    <ClInclude Include="echttp\http.hpp">
+    <ClInclude Include="..\echttp\respone.hpp">
       <Filter>echttp</Filter>
     </ClInclude>
-    <ClInclude Include="oss\global.hpp">
+    <ClInclude Include="..\oss\auth.hpp">
       <Filter>oss</Filter>
     </ClInclude>
-    <ClInclude Include="oss\auth.hpp">
+    <ClInclude Include="..\oss\global.hpp">
       <Filter>oss</Filter>
     </ClInclude>
-    <ClInclude Include="oss\result.hpp">
+    <ClInclude Include="..\oss\result.hpp">
       <Filter>oss</Filter>
     </ClInclude>
-    <ClInclude Include="oss\client.h">
+    <ClInclude Include="..\oss\client.hpp">
       <Filter>oss</Filter>
     </ClInclude>
   </ItemGroup>
@@ -103,9 +103,6 @@
     </ClCompile>
     <ClCompile Include="InputBox.cpp">
       <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="oss\client.cpp">
-      <Filter>oss</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
