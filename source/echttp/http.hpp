@@ -15,7 +15,7 @@ namespace echttp
 
 		http(void)
 		{
-			this->m_ioServ=&iopool::Instance(4)->io;
+			this->m_ioServ=&iopool::Instance(2)->io;
 		}
 
 		~http(void){}

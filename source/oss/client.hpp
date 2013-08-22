@@ -77,9 +77,9 @@ namespace oss
 		    if(respone->statusCode==200)
 		    {
 			    std::string sources=respone->body.get();
-                result::ListBucketResult *buckets=new result::ListBucketResult;
+                //result::ListBucketResult *buckets=new result::ListBucketResult;
                 //上面需要回调中删除，很难保证调用方释放，尝试使用智能指针
-                //boost::shared_ptr<result::ListBucketResult> buckets(new result::ListBucketResult);
+                boost::shared_ptr<result::ListBucketResult> buckets(new result::ListBucketResult);
 
 			    boost::smatch result;
 			    std::string regtxt("<Name>(.*?)</Name>[\\s\\S]*?<CreationDate>(.*?)</CreationDate>");
@@ -98,7 +98,8 @@ namespace oss
 				    buckets->push_back(bucket);	
 				    start=result[0].second;
 			    }
-			    func(respone->statusCode,sources,buckets);
+
+			    func(respone->statusCode,sources,buckets.get());
 
 
 		    }else if(respone->statusCode==403)
