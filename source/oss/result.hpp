@@ -13,5 +13,7 @@ namespace oss
         };
 
         typedef  std::vector<oss::result::Bucket> ListBucketResult;
+
+        typedef std::string PutBucketAclResult;
     }
 }
