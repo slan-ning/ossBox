@@ -17,15 +17,16 @@ namespace echttp
     class client
     {
     public:
-        typedef	boost::function<void(boost::shared_ptr<ClientResult> result)> ClientCallBack;
+        typedef	boost::function<void(boost::shared_ptr<echttp::respone> result)> ClientCallBack;
         ClientCallBack mHttpBack;
 
         
         client(boost::asio::io_service& io_service,up_task task,boost::shared_ptr<respone> _respone);
         ~client();
 
-        void Send(ClientCallBack cb);
-        boost::shared_ptr<ClientResult> Send(request *request);
+        void send(ClientCallBack cb);
+        boost::shared_ptr<ClientResult> send(request *request);
+        void stop();
 
     private:
         bool has_stop;//类能否销毁
@@ -45,6 +46,7 @@ namespace echttp
 		boost::shared_ptr<respone> m_respone;
 		
 		int nTimeOut;
+        size_t m_buffer_size;
 
         void check_deadline(boost::system::error_code err);
         bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx);
@@ -52,9 +54,9 @@ namespace echttp
         void handle_connect(boost::system::error_code err);
         void handle_handshake(boost::system::error_code err);
         void handle_write(boost::system::error_code err,size_t bytes_transfarred);
-        void handle_HeaderRead(boost::system::error_code err,size_t bytes_transfarred);
-        void handle_chunkRead(boost::system::error_code err,size_t bytes_transfarred);
-        void handle_ContentRead(boost::system::error_code err,size_t bytes_transfarred);
+        void handle_header_read(boost::system::error_code err,size_t bytes_transfarred);
+        void handle_chunk_read(boost::system::error_code err,size_t bytes_transfarred);
+        void handle_body_read(boost::system::error_code err,size_t bytes_transfarred);
         boost::shared_ptr<ClientResult> readBody();
     };
 
@@ -65,7 +67,8 @@ namespace echttp
 			ssl_sock(socket_,ctx),
 			deadline_(io_service),
             m_task(task),
-            m_respone(_respone)
+            m_respone(_respone),
+            m_buffer_size(1048576)
 		{
 			nTimeOut=10000;
 			has_stop=true;
@@ -78,13 +81,13 @@ namespace echttp
     }
 
 
-	void client::Send(ClientCallBack cb)
+	void client::send(ClientCallBack cb)
 	{
 		this->mHttpBack=cb;
 		tcp::resolver::query query(m_task.ip,m_task.port);
 
-		if (deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut))>=0)
-			deadline_.async_wait(boost::bind(&client::check_deadline, this,boost::asio::placeholders::error));
+		deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut));
+		deadline_.async_wait(boost::bind(&client::check_deadline, this,boost::asio::placeholders::error));
 
 
 		//解析域名。
@@ -95,7 +98,7 @@ namespace echttp
 
 
 		//如果协议是ssl，就进行认证
-		if(request->m_isSSL==true)
+        if(m_task.is_ssl)
 		{
 			protocol_=1;
 			ssl_sock.set_verify_mode(boost::asio::ssl::verify_peer);
@@ -104,7 +107,7 @@ namespace echttp
 
 	}
 
-	boost::shared_ptr<ClientResult> client::Send(request *request)
+	boost::shared_ptr<ClientResult> client::send(request *request)
 	{
 		this->m_request=request;
 		tcp::resolver::query query(request->m_ip,request->m_port);
@@ -141,36 +144,45 @@ namespace echttp
 
 	void client::check_deadline(boost::system::error_code err)
 	{
-		if(err != boost::asio::error::operation_aborted)
-		{
-			has_stop=false;
-			try{
-				socket_.close();
-				has_stop=true;
-			}
-			catch(...)
-			{
-				has_stop=true;
-			}
+        if (has_stop)
+            return;
 
-		}
+        if (deadline_.expires_at() <= boost::asio::deadline_timer::traits_type::now())
+        {
+
+            boost::system::error_code ignored_ec;
+            socket_.close(ignored_ec);
+
+            deadline_.expires_at(boost::posix_time::pos_infin);
+        }
+
+        // Put the actor back to sleep.
+        deadline_.async_wait(boost::bind(&client::check_deadline, this));
 	}
+
+    void client::stop()
+    {
+        this->has_stop = true;
+        boost::system::error_code ignored_ec;
+        socket_.close(ignored_ec);
+        deadline_.cancel();
+    }
 
 		
 	void client::handle_resolver(boost::system::error_code err, tcp::resolver::iterator endpoint_iterator)
 	{
 		if(!err)
 		{
-			if (deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut))>=0)
-				deadline_.async_wait(boost::bind(&client::check_deadline, this,boost::asio::placeholders::error));
+			deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut));
 
 			boost::asio::async_connect(socket_,endpoint_iterator,
 				boost::bind(&client::handle_connect,this,boost::asio::placeholders::error));
 		}
 		else
 		{
-			this->m_respone->errorCode=1;
-			this->m_respone->errMsg="解析域名失败";
+            stop();
+            this->m_respone->error_code=err.value();
+            this->m_respone->error_msg=err.message();
 			mHttpBack(this->m_respone);
 		}
 	}
@@ -196,15 +208,17 @@ namespace echttp
 			}
 			else
 			{
-				boost::asio::async_write(socket_,boost::asio::buffer(m_request->m_body.get(),m_request->m_bodySize),
+                std::vector<char> buf=m_task.get_write_data(m_buffer_size);
+				boost::asio::async_write(socket_,boost::asio::buffer(buf),
 					boost::bind(&client::handle_write,this,boost::asio::placeholders::error,
 					boost::asio::placeholders::bytes_transferred));
 			}
 		}
 		else
 		{
-			this->m_respone->errorCode=2;
-			this->m_respone->errMsg="连接失败";
+			stop();
+            this->m_respone->error_code=err.value();
+            this->m_respone->error_msg=err.message();
 			mHttpBack(this->m_respone);
 		}
 	}
@@ -215,16 +229,18 @@ namespace echttp
 
 		if(!err)
 		{
-			if (deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut))>=0)
-				deadline_.async_wait(boost::bind(&client::check_deadline, this,boost::asio::placeholders::error));
-			boost::asio::async_write(ssl_sock,boost::asio::buffer(m_request->m_body.get(),m_request->m_bodySize),
+			deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut));
+
+            std::vector<char> buf=m_task.get_write_data(m_buffer_size);
+            boost::asio::async_write(ssl_sock,boost::asio::buffer(buf),
 				boost::bind(&client::handle_write,this,boost::asio::placeholders::error,
 				boost::asio::placeholders::bytes_transferred));
 		}
 		else
 		{
-			this->m_respone->errorCode=3;
-			this->m_respone->errMsg="握手失败";
+			stop();
+            this->m_respone->error_code=err.value();
+            this->m_respone->error_msg=err.message();
 			mHttpBack(this->m_respone);
 		}
 	}
@@ -234,30 +250,54 @@ namespace echttp
 
 		if(!err)
 		{
-			if (deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut))>=0)
-				deadline_.async_wait(boost::bind(&client::check_deadline, this,boost::asio::placeholders::error));
+            m_respone->notify_status(m_task.total_size,m_task.get_pos());
 
-			if(protocol_==1)
-			{
-				boost::asio::async_read_until(ssl_sock,respone_,"\r\n\r\n",
-					boost::bind(&client::handle_HeaderRead,this,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));
-			}
-			else
-			{
-				boost::asio::async_read_until(socket_,respone_,"\r\n\r\n",
-					boost::bind(&client::handle_HeaderRead,this,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));
-			}
+            if(!m_task.is_end)
+            {
+                 std::vector<char> buf=m_task.get_write_data(m_buffer_size);
+
+                if(protocol_==1)
+			    {
+                    boost::asio::async_write(ssl_sock,boost::asio::buffer(buf),
+				        boost::bind(&client::handle_write,this,boost::asio::placeholders::error,
+				        boost::asio::placeholders::bytes_transferred));
+                }
+                else
+                {
+                    boost::asio::async_write(socket_,boost::asio::buffer(buf),
+					    boost::bind(&client::handle_write,this,boost::asio::placeholders::error,
+					    boost::asio::placeholders::bytes_transferred));
+                }
+				
+            }else
+            {
+                deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut));
+
+			    if(protocol_==1)
+			    {
+				    boost::asio::async_read_until(ssl_sock,respone_,"\r\n\r\n",
+					    boost::bind(&client::handle_header_read,this,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));
+			    }
+			    else
+			    {
+				    boost::asio::async_read_until(socket_,respone_,"\r\n\r\n",
+					    boost::bind(&client::handle_header_read,this,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));
+			    }
+            }
+
+			
 		}
 		else
 		{
-			this->m_respone->errorCode=4;
-			this->m_respone->errMsg="写入错误";
+			stop();
+            this->m_respone->error_code=err.value();
+            this->m_respone->error_msg=err.message();
 			mHttpBack(this->m_respone);
 		}
 	}
 
 	//http包头的读取回调函数。
-	void client::handle_HeaderRead(boost::system::error_code err,size_t bytes_transfarred)
+	void client::handle_header_read(boost::system::error_code err,size_t bytes_transfarred)
 	{
 
 		if(!err)
@@ -291,14 +331,14 @@ namespace echttp
 				{
 
 					boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(nContentLen-rdContentSize)
-						,boost::bind(&client::handle_ContentRead,this,boost::asio::placeholders::error
+						,boost::bind(&client::handle_body_read,this,boost::asio::placeholders::error
 						,boost::asio::placeholders::bytes_transferred));
 
 				}
 				else
 				{
 					boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(nContentLen-rdContentSize)
-						,boost::bind(&client::handle_ContentRead,this,boost::asio::placeholders::error
+						,boost::bind(&client::handle_body_read,this,boost::asio::placeholders::error
 						,boost::asio::placeholders::bytes_transferred));
 				}
 
@@ -309,14 +349,14 @@ namespace echttp
 				{
 
 					boost::asio::async_read_until(ssl_sock,respone_,"\r\n"
-						,boost::bind(&client::handle_chunkRead,this,boost::asio::placeholders::error
+						,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
 						,boost::asio::placeholders::bytes_transferred));
 
 				}
 				else
 				{
 					boost::asio::async_read_until(socket_,respone_,"\r\n"
-						,boost::bind(&client::handle_chunkRead,this,boost::asio::placeholders::error
+						,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
 						,boost::asio::placeholders::bytes_transferred));
 				}
 			}
@@ -333,7 +373,7 @@ namespace echttp
 
 	}
 
-	void client::handle_chunkRead(boost::system::error_code err,size_t bytes_transfarred)
+	void client::handle_chunk_read(boost::system::error_code err,size_t bytes_transfarred)
 	{
 		if(!err||err.value()==2)
 		{
@@ -388,13 +428,13 @@ namespace echttp
 
 			if(protocol_==1){
 				boost::asio::async_read_until(ssl_sock,respone_,"\r\n"
-					,boost::bind(&client::handle_chunkRead,this,boost::asio::placeholders::error
+					,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
 					,boost::asio::placeholders::bytes_transferred));
 			}
 			else
 			{
 				boost::asio::async_read_until(socket_,respone_,"\r\n"
-					,boost::bind(&client::handle_chunkRead,this,boost::asio::placeholders::error
+					,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
 					,boost::asio::placeholders::bytes_transferred));
 			}
 			}
@@ -414,7 +454,7 @@ namespace echttp
 	}
 
 	//http包体的读取回调函数
-	void client::handle_ContentRead(boost::system::error_code err,size_t bytes_transfarred)
+	void client::handle_body_read(boost::system::error_code err,size_t bytes_transfarred)
 	{
 		if(!err||err.value()==2)
 		{

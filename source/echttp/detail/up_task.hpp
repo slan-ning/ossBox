@@ -14,6 +14,8 @@ public:
 std::string ip;
 std::string port;
 
+size_t total_size;
+
 bool is_end;// 需要上传的数据是否已经全部读出
 bool header_end;
 bool is_ssl;
@@ -26,6 +28,17 @@ up_task(std::string header,std::string data,bool isfile)
     ,is_ssl(false)
 {
     this->header=header;
+
+    if(isfile){
+        total_size=fs::file_size(data);
+    }else{
+        total_size=data.size();
+    }
+}
+
+size_t get_pos()
+{
+    return pos;
 }
 
 std::vector<char> get_write_data(size_t length)
@@ -49,6 +62,16 @@ std::vector<char> get_write_data(size_t length)
         }
     }
 }
+
+
+
+private:
+
+bool is_file;
+std::string data;
+size_t pos;
+
+std::string header;
 
 std::vector<char> get_string_data(size_t length)
 {
@@ -111,13 +134,6 @@ std::vector<char> get_file_data(size_t length)
     }
 
 }
-
-private:
-    bool is_file;
-    std::string data;
-    size_t pos;
-
-    std::string header;
 
 };
 

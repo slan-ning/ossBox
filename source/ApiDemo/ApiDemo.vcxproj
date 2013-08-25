@@ -88,7 +88,11 @@
     <ClInclude Include="..\echttp\client.hpp" />
     <ClInclude Include="..\echttp\common.hpp" />
     <ClInclude Include="..\echttp\cookie.hpp" />
+    <ClInclude Include="..\echttp\detail\down_task.hpp" />
     <ClInclude Include="..\echttp\detail\escape_string.hpp" />
+    <ClInclude Include="..\echttp\detail\header.hpp" />
+    <ClInclude Include="..\echttp\detail\up_task.hpp" />
+    <ClInclude Include="..\echttp\file.hpp" />
     <ClInclude Include="..\echttp\function.hpp" />
     <ClInclude Include="..\echttp\http.hpp" />
     <ClInclude Include="..\echttp\iopool.hpp" />

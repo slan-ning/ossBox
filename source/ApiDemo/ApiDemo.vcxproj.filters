@@ -75,6 +75,18 @@
     <ClInclude Include="..\echttp\detail\escape_string.hpp">
       <Filter>echttp</Filter>
     </ClInclude>
+    <ClInclude Include="..\echttp\file.hpp">
+      <Filter>echttp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\echttp\detail\up_task.hpp">
+      <Filter>echttp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\echttp\detail\header.hpp">
+      <Filter>echttp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\echttp\detail\down_task.hpp">
+      <Filter>echttp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
