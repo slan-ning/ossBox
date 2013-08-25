@@ -32,17 +32,17 @@ namespace oss
             ,std::map<std::string,std::string> header=std::map<std::string,std::string>());
 	    void recvPutObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-	    void ListObject(std::string bucketName,ApiCallBack func,std::string prefix="",std::string delemiter="/",std::string marker="",std::string maxKeys="100",objectList *objects=NULL);
-	    void recvListObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func,objectList *objects);
+	    void ListObject(std::string bucketName,ApiCallBack func,std::string prefix="",std::string delemiter="/",std::string marker="",std::string maxKeys="100");
+	    void recvListObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-	    void downObject(std::string bucketName,std::string objName,std::string path,ApiCallBack func,string newname="");
-	    void recvGetObject(boost::shared_ptr<echttp::respone> respone,std::string newname,ApiCallBack func);
+	    void DownObject(std::string bucketName,std::string objName,std::string path,ApiCallBack func,std::string newname="");
+	    void recvDownObject(boost::shared_ptr<echttp::respone> respone,std::string newname,ApiCallBack func);
 
 	    void initMultiUp(std::string bucketName,std::string objName,ApiCallBack func );
 	    void recvInitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
 	    void PutObject(std::string bucketName,std::string objName,std::string path,std::string upid,int partid,long pos,long size,ApiCallBack func);
-	    void CompleteUpload(std::string bucketName,std::string objectName,std::string upid,vector<UPTASK*> *tasklist,ApiCallBack func);
+	    void CompleteUpload(std::string bucketName,std::string objectName,std::string upid,std::vector<UPTASK*> *tasklist,ApiCallBack func);
 	    void recvCompleteUpload(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
 	    void recvListListMulitUp(boost::shared_ptr<echttp::respone> respone,uploadsObjectList *objects,ApiCallBack func);
@@ -277,15 +277,8 @@ namespace oss
 
     
     //list Object
-    void client::ListObject(std::string bucketName,ApiCallBack func,std::string prefix,std::string delimiter,std::string marker,std::string maxKeys,objectList *objects)
+    void client::ListObject(std::string bucketName,ApiCallBack func,std::string prefix,std::string delimiter,std::string marker,std::string maxKeys)
     {
-	    if (objects==NULL)
-	    {
-		    objects=new objectList;
-		    objects->bucketName=bucketName;
-		    objects->prefix=prefix;
-		    objects->delimiter=delimiter;
-	    }
 	    std::string url="http://"+bucketName+"."+*mConfig.host+"/?max-keys="+maxKeys;
 
 	    url+="&prefix="+prefix+"&delimiter="+delimiter;
@@ -294,24 +287,26 @@ namespace oss
 	    {
 		    url+="&marker="+marker;
 	    }
-	    url=weblib::Utf8Encode(url);
+	    url=echttp::Utf8Encode(url);
 
-	    this->getOssSign("GET","/"+bucketName+"/");
-	    this->mHttp.Get(url,boost::bind(&COssApi::recvListObject,this,_1,func,objects));
+	    this->BuildOssSign("GET","/"+bucketName+"/");
+	    this->mHttp.Get(url,boost::bind(&client::recvListObject,this,_1,func,objects));
     }
 
-    void COssApi::recvListObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack func,objectList *objects)
+    void client::recvListObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
     {
-	    if(respone->msg.get())
+	    if(respone->body.get())
 	    {
 		    if(respone->statusCode==200)
 		    {
-			    std::string sources=respone->msg.get(); 
-			    sources=weblib::Utf8Decode(sources);
+			    std::string sources=respone->body.get(); 
+			    sources=echttp::Utf8Decode(sources);
+
+                boost::shared_ptr<result::ListObjectResult> listResult(new result::ListObjectResult);
 
 			    //提取文件信息
 			    boost::smatch result;
-			    std::string regtxt("<Contents>.*?<Key>(.*?)</Key>.*?<LastModified>(.*?)</LastModified>.*?<Size>(.*?)</Size>.*?</Contents>");
+			    std::string regtxt("<Contents>.*?<Key>(.*?)</Key>.*?<LastModified>(.*?)</LastModified>.*?<ETag>(.*?)</ETag>.*?<Size>(.*?)</Size>.*?</Contents>");
 			    boost::regex rx(regtxt);
 
 			    std::string::const_iterator start,end;
@@ -319,18 +314,22 @@ namespace oss
 			    end=sources.end();
 
 			    if(sources.find("<NextMarker>")!=std::string::npos)
-				    objects->marker=weblib::substr(sources,"<NextMarker>","</NextMarker>");
+                    listResult->nextMarker=echttp::substr(sources,"<NextMarker>","</NextMarker>");
 			    else
-				    objects->marker="";
+				    listResult->nextMarker="";
 
 			    while(boost::regex_search(start,end,result,rx))
 			    {
-				    string path=result[1];
-				    Object *ossObject=new Object;
-				    ossObject->path=path;
-				    ossObject->size=weblib::convert<int>(result[3]);
-				    ossObject->time=result[2];
-				    objects->lists.push_back(ossObject);
+				    std::string path=result[1];
+                    std::string etag=result[3];
+                    boost::trim(etag);
+
+				    result::Object ossObject;
+				    ossObject.key=path;
+                    ossObject.etag=etag;
+				    ossObject.size=echttp::convert<int>(result[4]);
+				    ossObject.time=result[2];
+                    listResult->objectList.push_back(ossObject);
 				    start=result[0].second;
 			    }
 
@@ -346,28 +345,69 @@ namespace oss
 
 			    while(boost::regex_search(start1,end1,result1,rx1))
 			    {
-				    string dir=result1[1];
-				    objects->folders.push_back(dir);
+				    std::string dir=result1[1];
+                    listResult->folderList.push_back(dir);
 				    start1=result1[0].second;
 			    }
 
-			    if(objects->marker=="")
-			    {
-				    func(respone->statusCode,sources,objects);
-				    delete objects;
-			    }else
-			    {
-				    this->ListObject(objects->bucketName,func,objects->prefix,objects->delimiter,objects->marker,"100",objects);
-			    }
+				func(respone->statusCode,sources,listResult.get());
 
 		    }else
 		    {
-			    func(respone->statusCode,"",NULL);
+			    func(respone->statusCode,respone->body.get(),NULL);
 		    }
 
 	    }else
 	    {
 		    func(-1,"连接错误",NULL);
 	    }
+    }
+
+    
+    //下载object
+    void client::DownObject(std::string bucketName,std::string objName,std::string path,client::ApiCallBack func,std::string newname)
+    {
+
+	    objName=echttp::replace_all(objName,"\\","/");
+	    path=echttp::replace_all(path,"\\","/");
+
+	    if(path[path.size()-1]=='/')
+	    {
+		    std::string filename=(objName.find_last_of("/")!=std::string::npos)?objName.substr(objName.find_last_of("/")):objName;
+		    filename=(newname=="")?filename:newname;
+		    path=path+filename;
+	    }
+	    objName=echttp::Utf8Encode(objName);
+	    objName=echttp::UrlEncode(objName);
+	    this->BuildOssSign("GET","/"+bucketName+"/"+objName);
+	    this->mHttp.Get("http://"+bucketName+"."+*mConfig.host+"/"+objName,boost::bind(&client::recvDownObject,this,_1,path,func));
+    }
+
+    void client::recvDownObject(boost::shared_ptr<echttp::respone> respone,std::string newname,ApiCallBack func)
+    {
+
+	    if(respone->body.get())
+	    {
+		    if(respone->statusCode==200)
+		    {
+			    //判断路径是否存在，不存在则创建
+			    namespace fs=boost::filesystem;
+			    fs::path path(newname);
+			    fs::path dirpath=path.parent_path();
+			    if(!fs::exists(dirpath)){
+				    fs::create_directories(dirpath);
+			    }
+
+			    std::ofstream file(newname,std::ios::binary);
+			    file.write(respone->body.get(),respone->length);
+			    file.close();
+			    func(respone->statusCode,"ok",NULL);
+		    }else{
+			    func(respone->statusCode,respone->body.get(),NULL);
+		    }
+	    }else{
+		    func(respone->statusCode,"",NULL);		
+	    }
+
     }
 }

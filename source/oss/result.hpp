@@ -15,5 +15,20 @@ namespace oss
         typedef  std::vector<oss::result::Bucket> ListBucketResult;
 
         typedef std::string PutBucketAclResult;
+
+        struct Object
+        {
+            std::string key;
+            std::string size;
+            std::string time;
+            std::string etag;
+        };
+
+        struct ListObjectResult
+        {
+            std::vector<Object> objectList;
+            std::string nextMarker;
+            std::vector<std::string> folderList;
+        };
     }
 }

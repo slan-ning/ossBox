@@ -66,6 +66,15 @@
     <ClInclude Include="..\oss\client.hpp">
       <Filter>oss</Filter>
     </ClInclude>
+    <ClInclude Include="..\echttp\url.hpp">
+      <Filter>echttp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\echttp\cookie.hpp">
+      <Filter>echttp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\echttp\detail\escape_string.hpp">
+      <Filter>echttp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

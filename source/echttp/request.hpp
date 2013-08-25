@@ -3,184 +3,137 @@
 #include <map>
 #include "common.hpp"
 #include "function.hpp"
+#include "cookie.hpp"
+#include "url.hpp"
+#include "file.hpp"
+#include "detail/escape_string.hpp"
+#include "detail/header.hpp"
+#include "detail/up_task.hpp"
 
 namespace echttp
 {
-	class request
+
+
+class request
+{
+
+public:
+
+	cookie_option m_cookies;
+	header_option m_header;
+
+    std::string proxy_ip;
+    std::string proxy_port;
+
+	request(void)
 	{
-	public:
-		std::string m_resources;
-		std::string m_ip;
-		std::string m_port;
-		std::string m_host;
-		std::string m_userAgent;
-		std::string m_cookies;
-		std::string m_data;
-		std::map<std::string,std::string> m_otherHeader;
+		this->m_defalut_user_agent="Echoes Http Client";
+        this->m_defalut_connection="Keep-Alive";
+        this->m_defalut_accept="*/*";
+	}
+
+	~request(void)
+	{
+	}
+
+    void set_task_connection(up_task &task,const url &u)
+    {
+        if(this->proxy_ip!="" && this->proxy_port!="")
+        {
+            task.ip=this->proxy_ip;
+            task.port=this->proxy_port;
+        }
+        if(u.protocol()=="https")
+        {
+            task.is_ssl=true;
+        }
+
+    }
+
+    up_task make_task(std::string method, url &u)
+    {
+        up_task task(this->get_header(method,u),"",false);
+        this->set_task_connection(task,u);
+        return task;
+    }
+
+    up_task make_task(std::string method, url &u,std::string data)
+    {
+        this->m_header.insert("Content-Length",echttp::convert<std::string>(data.size()));
+        if(method=="POST" && m_header.find("Content-Type")=="")
+        {
+            this->m_header.insert("Content-Type","application/x-www-form-urlencoded");
+        }
+
+        up_task task(this->get_header(method,u),data,false);
+        this->set_task_connection(task,u);
+        return task;
+        
+    }
+
+    up_task make_file_task(std::string method, url &u,std::string path)
+    {
+        size_t file_size=fs::file_size(path);
+        this->m_header.insert("Content-Length",echttp::convert<std::string>(file_size));
+        if(method=="POST" && m_header.find("Content-Type")=="")
+        {
+            this->m_header.insert("Content-Type","application/x-www-form-urlencoded");
+        }
+
+        up_task task(this->get_header(method,u),path,true);
+        this->set_task_connection(task,u);
+        return task;
+    }
+
+private:
+    std::string m_defalut_user_agent;
+    std::string m_defalut_connection;
+    std::string m_defalut_accept;
+
+    std::string get_header(std::string method, url &u)
+    {
+        this->set_common_header();
+        this->m_header.insert("Host",u.host());
+
+        std::string cookie_string=this->m_cookies.cookie_string();
+        if(cookie_string!="")
+        {
+            this->m_header.insert("Cookie",cookie_string);
+        }
+
+        std::string uri=u.request_uri();
+        if(this->proxy_ip!="" && this->proxy_port!="")
+        {
+            uri=u.protocol()+"://"+u.host()+uri;
+        }
+
+        std::string header=method+" "+uri+" HTTP/1.1\r\n";
+        header+=this->m_header.header_string();
+        header+="\r\n";
+
+        this->m_header.clear();
+        return header;
+    }
+
+    void set_common_header()
+    {
+        if(this->m_header.find("User-Agent")=="")
+        {
+            this->m_header.insert("User-Agent",this->m_defalut_user_agent);
+        }
+
+        if(this->m_header.find("Connection")=="")
+        {
+            this->m_header.insert("Connection",this->m_defalut_connection);
+        }
+
+        if(this->m_header.find("Accept")=="")
+        {
+            this->m_header.insert("Accept",this->m_defalut_accept);
+        }
+    }
 
 
-		bool m_isSSL;
-		boost::shared_array<char> m_body;
-		size_t m_bodySize;
 
-
-		request(void)
-		{
-			this->m_bodySize=0;
-			this->m_userAgent="Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)";
-			this->m_otherHeader["Connection"]="Keep-Alive";
-			this->m_otherHeader["Accept"]="*/*";
-		}
-
-		~request(void)
-		{
-		}
-
-		
-		bool BuildBody(std::string method,std::string url,  boost::shared_array<char> data ,size_t dataLen)
-		{
-			std::string server=substr(url,"://","/");
-
-			if(server.find(":")!=std::string::npos){
-				this->m_host=substr(server,"",":");
-				this->m_port=substr(server,":","");
-			}else{
-				this->m_host=server;
-				this->m_port="80";
-			}
-			this->m_ip=m_host;
-
-			if(url.find("https")!=std::string::npos)
-			{
-				this->m_isSSL=true;
-			}else{
-				this->m_isSSL=false;
-			}
-
-			this->m_resources=url.substr(url.find(server)+server.length());
-			if(this->m_resources=="") this->m_resources="/";
-
-
-			std::string body;
-			if(method=="POST" &&this->m_otherHeader["Content-Type"]=="")
-			{
-				this->m_otherHeader["Content-Type"]="application/x-www-form-urlencoded";
-			}
-
-			if(method=="POST"|| dataLen>0){
-				char len[20];
-				::sprintf(len,"%d",dataLen);
-				this->m_otherHeader["Content-Length"]=std::string(len);
-			}
-
-			body=method+" "+this->m_resources+" HTTP/1.1\r\n";
-
-			std::map<std::string,std::string>::iterator itr=this->m_otherHeader.begin();
-
-			for(;itr!=this->m_otherHeader.end();itr++)
-			{
-				if(itr->second!="")
-					body+=itr->first+": "+itr->second+"\r\n";
-			}
-			body+="Host: "+this->m_host+"\r\n";
-			if(this->m_cookies!="") body+="Cookie: "+this->m_cookies+"\r\n";
-			if(this->m_userAgent!="") body+="User-Agent: "+this->m_userAgent+"\r\n";
-
-			body+="\r\n";
-			size_t len=0;
-			boost::shared_array<char> newdata;
-			if(dataLen>0)
-			{
-				len=body.length()+dataLen;
-				newdata=boost::shared_array<char>(new char[len]);
-				memset(newdata.get(),0,len);
-				memcpy(newdata.get(),body.c_str(),body.length());
-				memcpy(newdata.get()+body.length(),data.get(),dataLen);
-				data.reset();
-			}else
-			{
-				len=body.length();
-				newdata=boost::shared_array<char>(new char[len]);
-				memset(newdata.get(),0,len);
-				memcpy(newdata.get(),body.c_str(),len);
-			}
-
-			this->m_body=newdata;
-			this->m_bodySize=len;
-
-			this->m_otherHeader["Content-Type"]="";
-			this->m_otherHeader["Content-Length"]="";
-			
-			return true;
-		}
-
-		bool BuildProxyBody(std::string method,std::string ip, std::string port,std::string url, boost::shared_array<char> data ,size_t dataLen)
-		{
-			this->m_ip=ip;
-			this->m_port=port;
-			this->m_isSSL=false;
-
-			std::string server=substr(url,"://","/");
-
-			if(server.find(":")!=std::string::npos){
-				this->m_host=substr(server,"",":");
-			}else{
-				this->m_host=server;
-			}
-
-			this->m_resources=url;
-
-			std::string body;
-			if(method=="POST")
-			{
-				char len[20];
-				::sprintf(len,"%d",dataLen);
-				this->m_otherHeader["Content-Type"]="application/x-www-form-urlencoded";
-				this->m_otherHeader["Content-Length"]=std::string(len);
-			}else{
-				this->m_otherHeader["Content-Type"]="";
-				this->m_otherHeader["Content-Length"]="";
-			}
-
-			body=method+" "+this->m_resources+" HTTP/1.1\r\n";
-
-			std::map<std::string,std::string>::iterator itr=this->m_otherHeader.begin();
-
-			for(;itr!=this->m_otherHeader.end();itr++)
-			{
-				if(itr->second!="")
-					body+=itr->first+": "+itr->second+"\r\n";
-			}
-			body+="Host: "+m_host+"\r\n";
-			body+="Cookie: "+this->m_cookies+"\r\n";
-			body+="User-Agent: "+this->m_userAgent+"\r\n";
-
-			body+="\r\n";
-			size_t len=0;
-			boost::shared_array<char> newdata;
-			if(dataLen>0)
-			{
-				len=body.length()+dataLen;
-				newdata=boost::shared_array<char>(new char[len]);
-				memset(newdata.get(),0,len);
-				memcpy(newdata.get(),body.c_str(),body.length());
-				memcpy(newdata.get()+body.length(),data.get(),dataLen);
-				data.reset();
-			}else
-			{
-				len=body.length();
-				newdata=boost::shared_array<char>(new char[len]);
-				memset(newdata.get(),0,len);
-				memcpy(newdata.get(),body.c_str(),len);
-			}
-
-			this->m_body=newdata;
-			this->m_bodySize=len;
-			
-			return true;
-		}
-
-		
-
-	};
+};
 }

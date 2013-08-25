@@ -143,8 +143,8 @@ public:
 	void createDir(string bucketName,string dirname,ApiCallBack func);
 	void recvCreateDir(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
-        void deleteMulitFile(string bucketName,vector<string> filelist,ApiCallBack func);
-        void recvdeleteMulitFile(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
+    void deleteMulitFile(string bucketName,vector<string> filelist,ApiCallBack func);
+    void recvdeleteMulitFile(boost::shared_ptr<CWebRespone> respone,ApiCallBack func);
 
 
 	std::string  getContentType(std::string path);

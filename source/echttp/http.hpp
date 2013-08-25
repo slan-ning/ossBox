@@ -182,36 +182,6 @@ namespace echttp
 			}
 		}
 
-		void BuildCookie(std::string header)
-		{
-			boost::smatch result;
-			std::string regtxt("Set-Cooki.*? (.*?)=(.*?);");
-			boost::regex rx(regtxt);
-
-			std::string::const_iterator it=header.begin();
-			std::string::const_iterator end=header.end();
-
-			while (regex_search(it,end,result,rx))
-			{
-				std::string cookie_key=result[1];
-				std::string cookie_value=result[2];
-
-				if (Request.m_cookies.find(cookie_key)==std::string::npos)
-				{
-					Request.m_cookies+=cookie_key+"="+cookie_value+"; ";
-				}
-				else
-				{
-					std::string reg="("+cookie_key+")=(.*?);";
-					boost::regex regrep(reg,    boost::regex::icase|boost::regex::perl);
-					Request.m_cookies=boost::regex_replace(Request.m_cookies,regrep,"$1="+cookie_value+";");
-				}
-
-				it=result[0].second;
-			}
-
-		}
-
 		boost::shared_ptr<respone> buildRespone(boost::shared_ptr<ClientResult> result)
 		{
 			boost::shared_ptr<respone> httpRespone(new respone);
@@ -219,10 +189,10 @@ namespace echttp
 			httpRespone->errorCode=result->errorCode;
 			httpRespone->header=result->header;
 			httpRespone->body=result->msg;
-			httpRespone->len=result->len;
+			httpRespone->length=result->len;
 
 			if(result->errorCode==0 && result->header!=""){
-				this->BuildCookie(result->header);
+                this->Request.m_cookies.parse_header(result->header);
 				this->BuildHeader(httpRespone,result->header);
 			}
 			return httpRespone;

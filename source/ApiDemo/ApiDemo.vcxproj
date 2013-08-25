@@ -87,12 +87,15 @@
   <ItemGroup>
     <ClInclude Include="..\echttp\client.hpp" />
     <ClInclude Include="..\echttp\common.hpp" />
+    <ClInclude Include="..\echttp\cookie.hpp" />
+    <ClInclude Include="..\echttp\detail\escape_string.hpp" />
     <ClInclude Include="..\echttp\function.hpp" />
     <ClInclude Include="..\echttp\http.hpp" />
     <ClInclude Include="..\echttp\iopool.hpp" />
     <ClInclude Include="..\echttp\reader.hpp" />
     <ClInclude Include="..\echttp\request.hpp" />
     <ClInclude Include="..\echttp\respone.hpp" />
+    <ClInclude Include="..\echttp\url.hpp" />
     <ClInclude Include="..\oss\auth.hpp" />
     <ClInclude Include="..\oss\client.hpp" />
     <ClInclude Include="..\oss\global.hpp" />
