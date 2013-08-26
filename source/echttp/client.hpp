@@ -25,7 +25,7 @@ namespace echttp
         ~client();
 
         void send(ClientCallBack cb);
-        boost::shared_ptr<ClientResult> send(request *request);
+        boost::shared_ptr<echttp::respone> send();
         void stop();
 
     private:
@@ -38,8 +38,8 @@ namespace echttp
 		boost::asio::ssl::stream<boost::asio::ip::tcp::socket&> ssl_sock;
 		int protocol_;
 		boost::asio::streambuf respone_;
-		int nHeaderLen;
-		int nContentLen;
+		int m_header_size;
+		int m_body_size;
 		char* m_readBuf;
 
 		up_task m_task;
@@ -107,10 +107,9 @@ namespace echttp
 
 	}
 
-	boost::shared_ptr<ClientResult> client::send(request *request)
+	boost::shared_ptr<respone> client::send()
 	{
-		this->m_request=request;
-		tcp::resolver::query query(request->m_ip,request->m_port);
+		tcp::resolver::query query(m_task.ip,m_task.port);
 
 		//解析域名。
 		tcp::resolver::iterator endpoint_iterator =resolver_.resolve(query);
@@ -302,10 +301,9 @@ namespace echttp
 
 		if(!err)
 		{
-			if (deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut))>=0)
-				deadline_.async_wait(boost::bind(&client::check_deadline, this,boost::asio::placeholders::error));
+			deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut));
 
-			nHeaderLen=bytes_transfarred;
+			m_header_size=bytes_transfarred;
 			std::istream response_stream(&respone_);
 			response_stream.unsetf(std::ios_base::skipws);//asio::streambuf 转换成istream 并且忽略空格
 
@@ -325,19 +323,19 @@ namespace echttp
 			{
 				std::string len=m_respone->header.substr(m_respone->header.find("Content-Length: ")+16);
 				len=len.substr(0,len.find_first_of("\r"));
-				nContentLen=atoi(len.c_str());
+				m_body_size=atoi(len.c_str());
 
 				if(protocol_==1)
 				{
 
-					boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(nContentLen-rdContentSize)
+					boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(m_body_size-rdContentSize)
 						,boost::bind(&client::handle_body_read,this,boost::asio::placeholders::error
 						,boost::asio::placeholders::bytes_transferred));
 
 				}
 				else
 				{
-					boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(nContentLen-rdContentSize)
+					boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(m_body_size-rdContentSize)
 						,boost::bind(&client::handle_body_read,this,boost::asio::placeholders::error
 						,boost::asio::placeholders::bytes_transferred));
 				}
@@ -393,7 +391,7 @@ namespace echttp
 			{
 				this->m_respone->errorCode=0;
 				this->m_respone->msg=boost::shared_array<char>(this->m_readBuf);
-				this->m_respone->len=this->nContentLen;
+				this->m_respone->len=this->m_body_size;
 				mHttpBack(this->m_respone);
 				return ;
 			}
@@ -413,17 +411,17 @@ namespace echttp
 
 			if(this->m_readBuf==NULL){
 				this->m_readBuf=htmlBuf;
-				nContentLen=nextReadSize;
+				m_body_size=nextReadSize;
 			}else{
-				char * newCont=new char[nContentLen+nextReadSize+1];
-				memset(newCont,0,nContentLen+nextReadSize+1);
-				memcpy(newCont,this->m_readBuf,nContentLen);
-				memcpy(newCont+nContentLen,htmlBuf,nextReadSize);
+				char * newCont=new char[m_body_size+nextReadSize+1];
+				memset(newCont,0,m_body_size+nextReadSize+1);
+				memcpy(newCont,this->m_readBuf,m_body_size);
+				memcpy(newCont+m_body_size,htmlBuf,nextReadSize);
 				delete  this->m_readBuf;
 				delete  htmlBuf;
 
 				this->m_readBuf=newCont;
-				nContentLen+=nextReadSize;
+				m_body_size+=nextReadSize;
 			}
 
 			if(protocol_==1){
@@ -461,15 +459,15 @@ namespace echttp
 			std::istream response_stream(&respone_);
 			response_stream.unsetf(std::ios_base::skipws);//asio::streambuf 转换成istream 并且忽略空格
 
-			nContentLen=respone_.size();
+			m_body_size=respone_.size();
 			//将数据流追加到header里
-			char *cont=new char[nContentLen+1]; //此处申请了内存，注意释放。
-			memset(cont+nContentLen,0,1);
-			response_stream.read(cont,nContentLen);
+			char *cont=new char[m_body_size+1]; //此处申请了内存，注意释放。
+			memset(cont+m_body_size,0,1);
+			response_stream.read(cont,m_body_size);
 
 			this->m_respone->errorCode=0;
 			this->m_respone->msg=boost::shared_array<char>(cont);
-			this->m_respone->len=this->nContentLen;
+			this->m_respone->len=this->m_body_size;
 			mHttpBack(this->m_respone);
 
 		}else
