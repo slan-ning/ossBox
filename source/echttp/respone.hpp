@@ -23,9 +23,9 @@ public:
 
     std::string save_path;//保存文件path，若下载文件，则此值为文件路径
 
+	bool parse_header(std::string);
 
-    bool save_header(std::string);
-    bool save_body(boost::shared_array<char> buffer,size_t length);
+    bool save_body(std::vector<char> buffer,size_t length);
 
     void notify_status(size_t total,size_t now);
     void register_notify_callback();
@@ -40,6 +40,11 @@ respone::respone()
 
 respone::~respone()
 {
+}
+
+bool respone::parse_header(std::string)
+{
+	return false;
 }
 
 	

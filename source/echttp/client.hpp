@@ -119,7 +119,7 @@ namespace echttp
 			boost::asio::connect(socket_,endpoint_iterator);
 
 			//如果协议是ssl，就进行认证
-			if(request->m_isSSL==true){
+			if(m_task.is_ssl==true){
 				protocol_=1;
 				ssl_sock.set_verify_mode(boost::asio::ssl::verify_peer);
 				ssl_sock.set_verify_callback(boost::bind(&client::verify_certificate,this,_1,_2));
@@ -304,44 +304,46 @@ namespace echttp
 			deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut));
 
 			m_header_size=bytes_transfarred;
-			std::istream response_stream(&respone_);
-			response_stream.unsetf(std::ios_base::skipws);//asio::streambuf 转换成istream 并且忽略空格
+			int read_size=respone_.size();
 
-			//将数据流追加到header里
-			int readSize=respone_.size();
+			boost::asio::streambuf::const_buffers_type bufs = respone_.data();
+			std::string header(bufs.begin(),bufs.begin()+m_header_size);
+			respone_.commit(m_header_size);
 
-			char * head=new char[bytes_transfarred+1];
-			memset(head,0,bytes_transfarred+1);
-			response_stream.read(head,bytes_transfarred);
-			m_respone->header=head;
-			delete head;
+			if(!m_respone->parse_header(header))
+			{
+				stop();
+				this->m_respone->error_code=1;
+				this->m_respone->error_msg="解析http header错误!";
+				mHttpBack(this->m_respone);
+			}
 
-			int rdContentSize=readSize-m_respone->header.size();
+
+			int body_already_read_size=read_size-m_header_size;
 
 			//获取httpContent的长度
-			if(m_respone->header.find("Content-Length")!=std::string::npos)
+			if(m_respone->header.find("Content-Length")!="")
 			{
-				std::string len=m_respone->header.substr(m_respone->header.find("Content-Length: ")+16);
-				len=len.substr(0,len.find_first_of("\r"));
+				std::string len=m_respone->header.find("Content-Length");
 				m_body_size=atoi(len.c_str());
 
 				if(protocol_==1)
 				{
 
-					boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(m_body_size-rdContentSize)
+					boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(m_body_size-body_already_read_size)
 						,boost::bind(&client::handle_body_read,this,boost::asio::placeholders::error
 						,boost::asio::placeholders::bytes_transferred));
 
 				}
 				else
 				{
-					boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(m_body_size-rdContentSize)
+					boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(m_body_size-body_already_read_size)
 						,boost::bind(&client::handle_body_read,this,boost::asio::placeholders::error
 						,boost::asio::placeholders::bytes_transferred));
 				}
 
 			}
-			else if(m_respone->header.find("Transfer-Encoding: chunked")!=std::string::npos)
+			else if(m_respone->header.find("Transfer-Encoding")=="chunked")
 			{
 				if(protocol_==1)
 				{
@@ -363,8 +365,9 @@ namespace echttp
 		}
 		else
 		{
-			this->m_respone->errorCode=5;
-			this->m_respone->errMsg="头部读取错误";
+			stop();
+            this->m_respone->error_code=err.value();
+            this->m_respone->error_msg=err.message();
 			mHttpBack(this->m_respone);
 		}
 
@@ -456,24 +459,40 @@ namespace echttp
 	{
 		if(!err||err.value()==2)
 		{
-			std::istream response_stream(&respone_);
-			response_stream.unsetf(std::ios_base::skipws);//asio::streambuf 转换成istream 并且忽略空格
+			size_t buf_size=respone_.size();
+			boost::asio::streambuf::const_buffers_type bufs = respone_.data();
+			std::vector<char> read_buf(bufs.begin(),bufs.begin()+buf_size);
+			respone_.commit(buf_size);
 
-			m_body_size=respone_.size();
-			//将数据流追加到header里
-			char *cont=new char[m_body_size+1]; //此处申请了内存，注意释放。
-			memset(cont+m_body_size,0,1);
-			response_stream.read(cont,m_body_size);
+			m_respone->save_body(read_buf,buf_size);
 
-			this->m_respone->errorCode=0;
-			this->m_respone->msg=boost::shared_array<char>(cont);
-			this->m_respone->len=this->m_body_size;
-			mHttpBack(this->m_respone);
+			if(m_respone->length<m_body_size)
+			{
+				size_t read_size = (m_body_size-m_respone->length >m_buffer_size) ? m_buffer_size : m_body_size-m_respone->length;
+				if(protocol_==1)
+				{
+
+					boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(read_size)
+						,boost::bind(&client::handle_body_read,this,boost::asio::placeholders::error
+						,boost::asio::placeholders::bytes_transferred));
+
+				}
+				else
+				{
+					boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(read_size)
+						,boost::bind(&client::handle_body_read,this,boost::asio::placeholders::error
+						,boost::asio::placeholders::bytes_transferred));
+				}
+			}else
+			{
+				mHttpBack(m_respone);
+			}
 
 		}else
 		{
-			this->m_respone->errorCode=7;
-			this->m_respone->errMsg="内容读取错误";
+			stop();
+            this->m_respone->error_code=err.value();
+            this->m_respone->error_msg=err.message();
 			mHttpBack(this->m_respone);
 		}
 	}
