@@ -40,6 +40,7 @@ namespace echttp
 		boost::asio::streambuf respone_;
 		int m_header_size;
 		int m_body_size;
+		size_t m_chunk_rest_size;
 		char* m_readBuf;
 
 		up_task m_task;
@@ -55,8 +56,11 @@ namespace echttp
         void handle_handshake(boost::system::error_code err);
         void handle_write(boost::system::error_code err,size_t bytes_transfarred);
         void handle_header_read(boost::system::error_code err,size_t bytes_transfarred);
+
+		void handle_chunk_size(boost::system::error_code err,size_t bytes_transfarred);
         void handle_chunk_read(boost::system::error_code err,size_t bytes_transfarred);
         void handle_body_read(boost::system::error_code err,size_t bytes_transfarred);
+
         boost::shared_ptr<ClientResult> readBody();
     };
 
@@ -374,81 +378,118 @@ namespace echttp
 
 	}
 
+	void client::handle_chunk_size(boost::system::error_code err,size_t bytes_transfarred)
+	{
+		if(!err||err.value()==2)
+		{
+			boost::asio::streambuf::const_buffers_type bufs = respone_.data();
+		    std::string  data_len(bufs.begin(),bufs.begin()+bytes_transfarred);
+
+		    size_t next_chunk_size=atoi(data_len.c_str());
+		    respone_.commit(bytes_transfarred);
+
+			this->m_chunk_rest_size=next_chunk_size;
+
+			size_t read_size=m_chunk_rest_size<m_buffer_size ?m_chunk_rest_size:m_buffer_size;
+
+			m_chunk_rest_size-=read_size;
+
+			if(protocol_==1)
+			{
+
+				boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(read_size)
+					,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
+					,boost::asio::placeholders::bytes_transferred));
+
+			}
+			else
+			{
+				boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(read_size)
+					,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
+					,boost::asio::placeholders::bytes_transferred));
+			}
+
+		}else
+		{
+			stop();
+            this->m_respone->error_code=err.value();
+            this->m_respone->error_msg=err.message();
+			mHttpBack(this->m_respone);
+		}
+	}
+
 	void client::handle_chunk_read(boost::system::error_code err,size_t bytes_transfarred)
 	{
 		if(!err||err.value()==2)
 		{
-			try{
+			size_t buf_size=respone_.size();
+
 			std::istream response_stream(&respone_);
-			response_stream.unsetf(std::ios_base::skipws);//asio::streambuf 转换成istream 并且忽略空格
+			response_stream.unsetf(std::ios_base::skipws);//asio::streambuf 转换成istream 并且忽略空]
 
-			int contSize=bytes_transfarred;
-			int readLen=respone_.size()-contSize;
-
-			char *chunkStr=new char[contSize]; //此处申请了内存，注意释放。
-			response_stream.read(chunkStr,contSize);
-			memset(chunkStr+contSize-2,0,2);
-			long nextReadSize=strtol(chunkStr,NULL,16);
-			delete chunkStr;
-			if(nextReadSize==0) 
+			if(buf_size<=m_chunk_rest_size)//如果缓冲区的数据比要读的小
 			{
-				this->m_respone->errorCode=0;
-				this->m_respone->msg=boost::shared_array<char>(this->m_readBuf);
-				this->m_respone->len=this->m_body_size;
-				mHttpBack(this->m_respone);
-				return ;
-			}
+				std::vector<char> buf;
+				buf.resize(buf_size);
 
-			char * htmlBuf=new char[nextReadSize+2];
-			memset(htmlBuf,0,nextReadSize+2);
-			if(nextReadSize>readLen){
-				if(protocol_==1){
-					boost::asio::read(ssl_sock,respone_,boost::asio::transfer_at_least(nextReadSize-readLen+2));
-				}else{
-					boost::asio::read(socket_,respone_,boost::asio::transfer_at_least(nextReadSize-readLen+2));
+				m_chunk_rest_size-=buf_size;
+				response_stream.read(&buf.front(),buf_size);
+
+				m_respone->save_body(buf,buf_size);
+
+				if(m_chunk_rest_size==0)//这个块已经读完
+				{
+					if(protocol_==1)
+					{
+
+						boost::asio::async_read_until(ssl_sock,respone_,"\r\n"
+							,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
+							,boost::asio::placeholders::bytes_transferred));
+
+					}
+					else
+					{
+						boost::asio::async_read_until(socket_,respone_,"\r\n"
+							,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
+							,boost::asio::placeholders::bytes_transferred));
+					}
+				}else
+				{
+					size_t read_size=m_chunk_rest_size<m_buffer_size?m_chunk_rest_size:m_buffer_size;
+
+					if(protocol_==1)
+					{
+
+						boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(read_size)
+							,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
+							,boost::asio::placeholders::bytes_transferred));
+
+					}
+					else
+					{
+						boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(read_size)
+							,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
+							,boost::asio::placeholders::bytes_transferred));
+					}
 				}
-			}
-
-			response_stream.read(htmlBuf,nextReadSize+2);
-			memset(htmlBuf+nextReadSize,0,2);
-
-			if(this->m_readBuf==NULL){
-				this->m_readBuf=htmlBuf;
-				m_body_size=nextReadSize;
-			}else{
-				char * newCont=new char[m_body_size+nextReadSize+1];
-				memset(newCont,0,m_body_size+nextReadSize+1);
-				memcpy(newCont,this->m_readBuf,m_body_size);
-				memcpy(newCont+m_body_size,htmlBuf,nextReadSize);
-				delete  this->m_readBuf;
-				delete  htmlBuf;
-
-				this->m_readBuf=newCont;
-				m_body_size+=nextReadSize;
-			}
-
-			if(protocol_==1){
-				boost::asio::async_read_until(ssl_sock,respone_,"\r\n"
-					,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
-					,boost::asio::placeholders::bytes_transferred));
-			}
-			else
+			}else 
 			{
-				boost::asio::async_read_until(socket_,respone_,"\r\n"
-					,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
-					,boost::asio::placeholders::bytes_transferred));
-			}
-			}
-			catch(const boost::system::error_code& ex)
-			{
-				this->m_respone->errMsg=ex.message();
-				this->m_respone->errorCode= ex.value();
-				mHttpBack(this->m_respone);
+				std::vector<char> buf;
+				buf.resize(m_chunk_rest_size);
+
+				
+				response_stream.read(&buf.front(),m_chunk_rest_size);
+
+				m_respone->save_body(buf,m_chunk_rest_size);
+				m_chunk_rest_size=0;
+
+				this->handle_chunk_size(err,buf_size-m_chunk_rest_size);
 			}
 
 		}else{
-			this->m_respone->errorCode=6;
-			this->m_respone->errMsg="内容读取错误";
+			stop();
+            this->m_respone->error_code=err.value();
+            this->m_respone->error_msg=err.message();
 			mHttpBack(this->m_respone);
 		}
 

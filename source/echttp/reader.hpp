@@ -15,6 +15,8 @@ private:
 	boost::asio::streambuf respone_;
 	size_t chunk_remain_size;//chunk 剩余未读取的大小
 
+	size_t buffer_size;
+
 	std::vector<char> syn_read_chunk_data(size_t len)
 	{
 		size_t tmp_size=chunk_remain_size<=len ? chunk_remain_size :len;
@@ -27,9 +29,10 @@ public:
 	bool m_chunk_end;
 
 
-	reader(Tsock *sock,boost::asio::streambuf &buf):
+	reader(Tsock *sock,boost::asio::streambuf &buf,size_t buf_size):
 		m_chunk_end(false),
-        respone_(buf)
+        respone_(buf),
+		buffer_size(buf_size)
 	{
 		this->m_sock=sock;
 	}
@@ -108,9 +111,15 @@ public:
 		    size_t next_chunk_size=atoi(data_len.c_str());
 		    respone_.commit(bytes_transfarred);
 
-            boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(m_body_size-body_already_read_size)
+			this->chunk_remain_size=next_chunk_size;
+
+			size_t read_size=chunk_remain_size<buffer_size?chunk_remain_size:buffer_size;
+			chunk_remain_size-=read_size;
+
+
+            boost::asio::async_read(m_sock,respone_,boost::asio::transfer_at_least(read_size)
 						,boost::bind(&reader::read_chunk_data,this,boost::asio::placeholders::error
-						,boost::asio::placeholders::bytes_transferred)
+						,boost::asio::placeholders::bytes_transferred));
 
 
         }
