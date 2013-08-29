@@ -15,7 +15,7 @@ private:
 	boost::asio::streambuf respone_;
 	size_t chunk_remain_size;//chunk 剩余未读取的大小
 
-	std::vector<char> read_chunk_data(size_t len)
+	std::vector<char> syn_read_chunk_data(size_t len)
 	{
 		size_t tmp_size=chunk_remain_size<=len ? chunk_remain_size :len;
 		chunk_remain_size-=tmp_size;
@@ -27,8 +27,9 @@ public:
 	bool m_chunk_end;
 
 
-	reader(Tsock *sock):
-		m_chunk_end(false)
+	reader(Tsock *sock,boost::asio::streambuf &buf):
+		m_chunk_end(false),
+        respone_(buf)
 	{
 		this->m_sock=sock;
 	}
@@ -68,13 +69,13 @@ public:
 	{
 		if(chunk_remain_size>0)
 		{
-			return this->read_chunk_data(len);
+			return this->syn_read_chunk_data(len);
 
 		}else
 		{
 			size_t next_chunk_size=0;
 					
-			content_size=boost::asio::read_until(*m_sock,respone_,"\r\n");
+			size_t content_size=boost::asio::read_until(*m_sock,respone_,"\r\n");
 
 			boost::asio::streambuf::const_buffers_type bufs = respone_.data();
 			std::string  data_len(bufs.begin(),bufs.begin()+content_size);
@@ -85,7 +86,8 @@ public:
 
 			if(next_chunk_size>0)
 			{
-				return this->read_chunk_data(len);
+                chunk_remain_size=next_chunk_size;
+				return this->syn_read_chunk_data(len);
 				
 			}else
 			{
@@ -96,6 +98,31 @@ public:
 		}
 
 	}
+
+    void handle_read_chunk(boost::system::error_code err,size_t bytes_transfarred)
+    {
+        if(!err)
+        {
+            boost::asio::streambuf::const_buffers_type bufs = respone_.data();
+		    std::string  data_len(bufs.begin(),bufs.begin()+bytes_transfarred);
+		    size_t next_chunk_size=atoi(data_len.c_str());
+		    respone_.commit(bytes_transfarred);
+
+            boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(m_body_size-body_already_read_size)
+						,boost::bind(&reader::read_chunk_data,this,boost::asio::placeholders::error
+						,boost::asio::placeholders::bytes_transferred)
+
+
+        }
+        
+    }
+
+    void read_chunk_data(boost::system::error_code err,size_t bytes_transfarred)
+    {
+        
+    }
+
+
 
 
 
