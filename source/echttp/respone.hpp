@@ -9,6 +9,8 @@ namespace  echttp{
 class respone
 {
 public:
+    typedef	boost::function<void(int type,size_t total,size_t now)> StatusCallBack;
+
     respone();
     ~respone();
 
@@ -27,14 +29,17 @@ public:
 
     bool save_body(std::vector<char> buffer,size_t length);
 
-    void notify_status(size_t total,size_t now);
-    void register_notify_callback();
+    void notify_status(int type,size_t total,size_t now);
+
+    void register_notify_callback(StatusCallBack cb);
 
 private:
+    StatusCallBack m_status_cb;
 
 };
 
 respone::respone()
+    :m_status_cb(0)
 {
 }
 
@@ -45,6 +50,19 @@ respone::~respone()
 bool respone::parse_header(std::string)
 {
 	return false;
+}
+
+void respone::register_notify_callback(StatusCallBack cb)
+{
+    this->m_status_cb=cb;
+}
+
+void respone::notify_status(int type,size_t total,size_t now)
+{
+    if(this->m_status_cb)
+    {
+        this->m_status_cb(type,total,now);
+    }
 }
 
 	

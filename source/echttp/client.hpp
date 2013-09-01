@@ -22,6 +22,7 @@ namespace echttp
 
         
         client(boost::asio::io_service& io_service,up_task task);
+        client(boost::asio::io_service& io_service,up_task task,boost::shared_ptr<respone> respone);
         ~client();
 
         void send(ClientCallBack cb);
@@ -76,6 +77,21 @@ namespace echttp
 			nTimeOut=10000;
 			has_stop=true;
 			m_respone=boost::shared_ptr<respone>(new respone);
+			m_readBuf=NULL;
+		}
+
+    client::client(boost::asio::io_service& io_service,up_task task,boost::shared_ptr<respone> respone)
+			:socket_(io_service),
+			resolver_(io_service),
+			ctx(boost::asio::ssl::context::sslv23),
+			ssl_sock(socket_,ctx),
+			deadline_(io_service),
+            m_task(task),
+            m_buffer_size(1048576),
+            m_respone(respone)
+		{
+			nTimeOut=10000;
+			has_stop=true;
 			m_readBuf=NULL;
 		}
 
