@@ -21,7 +21,7 @@ namespace echttp
         ClientCallBack mHttpBack;
 
         
-        client(boost::asio::io_service& io_service,up_task task,boost::shared_ptr<respone> _respone);
+        client(boost::asio::io_service& io_service,up_task task);
         ~client();
 
         void send(ClientCallBack cb);
@@ -61,22 +61,21 @@ namespace echttp
         void handle_chunk_read(boost::system::error_code err,size_t bytes_transfarred);
         void handle_body_read(boost::system::error_code err,size_t bytes_transfarred);
 
-        boost::shared_ptr<ClientResult> readBody();
+        boost::shared_ptr<respone> syn_read_body();
     };
 
-    client::client(boost::asio::io_service& io_service,up_task task,boost::shared_ptr<respone> _respone)
+    client::client(boost::asio::io_service& io_service,up_task task)
 			:socket_(io_service),
 			resolver_(io_service),
 			ctx(boost::asio::ssl::context::sslv23),
 			ssl_sock(socket_,ctx),
 			deadline_(io_service),
             m_task(task),
-            m_respone(_respone),
             m_buffer_size(1048576)
 		{
 			nTimeOut=10000;
 			has_stop=true;
-			m_respone=boost::shared_ptr<ClientResult>(new ClientResult);
+			m_respone=boost::shared_ptr<respone>(new respone);
 			m_readBuf=NULL;
 		}
 
@@ -128,19 +127,32 @@ namespace echttp
 				ssl_sock.set_verify_mode(boost::asio::ssl::verify_peer);
 				ssl_sock.set_verify_callback(boost::bind(&client::verify_certificate,this,_1,_2));
 				ssl_sock.handshake(boost::asio::ssl::stream_base::client);
-				boost::asio::write(ssl_sock,boost::asio::buffer(request->m_body.get(),request->m_bodySize));
-			}else{
-				boost::asio::write(socket_,boost::asio::buffer(request->m_body.get(),request->m_bodySize));
 			}
 
-			return this->readBody();
+			while (true)
+			{
+				std::vector<char> buf=m_task.get_write_data(m_buffer_size);
+
+				if(protocol_==1)
+				{
+					boost::asio::write(ssl_sock,boost::asio::buffer(buf));
+				}
+				else
+				{
+					boost::asio::write(socket_,boost::asio::buffer(buf));
+				}
+				
+			}
+
+			return this->syn_read_body();
 
 		}
 		catch(const boost::system::error_code& ex)
 		{
-			m_respone->errMsg=ex.message();
-			m_respone->errorCode=ex.value();//连接失败
-			return m_respone;
+			stop();
+            this->m_respone->error_code=ex.value();
+            this->m_respone->error_msg=ex.message();
+			return this->m_respone;
 		}
 
 	}
@@ -538,27 +550,66 @@ namespace echttp
 		}
 	}
 
-	boost::shared_ptr<ClientResult> client::readBody()
+	boost::shared_ptr<respone> client::syn_read_body()
 	{
-			
 
 		if(protocol_==1){
-			echttp::reader<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&> > reader(&ssl_sock);			
-			boost::shared_array<char> content=reader.read();
-			
-			m_respone->errorCode=0;
-			m_respone->msg=content;
-			m_respone->header=reader.m_header;
-			m_respone->len=reader.m_bodysize;
+			echttp::reader<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&> > reader(&ssl_sock,respone_,m_buffer_size);
+
+			std::string header=reader.syn_read_header();
+
+			this->m_respone->parse_header(header);
+
+			if (this->m_respone->header.find("Content-Length")!="")
+			{
+				size_t need_read_size=atoi(this->m_respone->header.find("Content-Length").c_str());
+				size_t read_size=0;
+
+				while (read_size<need_read_size)
+				{
+					std::vector<char> buf=reader.syn_read();
+					m_respone->save_body(buf,buf.size());
+					read_size+=buf.size();
+
+				}
+			}else if(m_respone->header.find("Transfer-Encoding")=="chunked")
+			{
+				while (!reader.m_chunk_end)
+				{
+					std::vector<char> buf=reader.syn_read_chunk_body();
+					m_respone->save_body(buf,buf.size());
+				}
+			}
+
 
 		}else{
-			echttp::reader<tcp::socket> reader(&socket_);
-			boost::shared_array<char> content=reader.read();
-			
-			m_respone->errorCode=0;
-			m_respone->msg=content;
-			m_respone->header=reader.m_header;
-			m_respone->len=reader.m_bodysize;
+			echttp::reader<tcp::socket> reader(&socket_,respone_,m_buffer_size);
+
+			std::string header=reader.syn_read_header();
+
+			this->m_respone->parse_header(header);
+
+			if (this->m_respone->header.find("Content-Length")!="")
+			{
+				size_t need_read_size=atoi(this->m_respone->header.find("Content-Length").c_str());
+				size_t read_size=0;
+
+				while (read_size<need_read_size)
+				{
+					std::vector<char> buf=reader.syn_read();
+					m_respone->save_body(buf,buf.size());
+					read_size+=buf.size();
+
+				}
+			}else if(m_respone->header.find("Transfer-Encoding")=="chunked")
+			{
+				while (!reader.m_chunk_end)
+				{
+					std::vector<char> buf=reader.syn_read_chunk_body();
+					m_respone->save_body(buf,buf.size());
+				}
+			}
+
 		}
 			
 		return m_respone;

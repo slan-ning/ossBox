@@ -42,37 +42,37 @@ public:
 
 	std::string syn_read_header()
 	{	
-		headSize=boost::asio::read_until(*m_sock,respone_,"\r\n\r\n");
+		size_t header_size=boost::asio::read_until(*m_sock,respone_,"\r\n\r\n");
 				
 		boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-		std::string header(bufs.begin(),bufs.begin()+m_header_size);
+		std::string header(bufs.begin(),bufs.begin()+header_size);
 
-		respone_.commit(m_header_size);
+		respone_.commit(header_size);
 
 		return header;
 	}
 
-	std::string syn_read(size_t len)
+	std::vector<char> syn_read()
 	{
 		size_t alreadly_size=respone_.size();
 
-		if(alreadly_size<len)
+		if(alreadly_size<buffer_size)
 		{
 		    boost::asio::read(*m_sock,respone_,boost::asio::transfer_at_least(len-alreadly_size));
 		}
 
 		boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-		std::vector<char> content(bufs.begin(),bufs.begin()+len);
-		respone_.commit(len);
+		std::vector<char> content(bufs.begin(),bufs.begin()+lenbuffer_size;
+		respone_.commit(buffer_size);
 
 		return content;
 	}
 
-	std::string syn_read_chunk_body(sizt_t len)
+	std::vector<char> syn_read_chunk_body()
 	{
 		if(chunk_remain_size>0)
 		{
-			return this->syn_read_chunk_data(len);
+			return this->syn_read_chunk_data(buffer_size);
 
 		}else
 		{
@@ -90,7 +90,7 @@ public:
 			if(next_chunk_size>0)
 			{
                 chunk_remain_size=next_chunk_size;
-				return this->syn_read_chunk_data(len);
+				return this->syn_read_chunk_data(buffer_size);
 				
 			}else
 			{
@@ -101,39 +101,6 @@ public:
 		}
 
 	}
-
-    void handle_read_chunk(boost::system::error_code err,size_t bytes_transfarred)
-    {
-        if(!err)
-        {
-            boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-		    std::string  data_len(bufs.begin(),bufs.begin()+bytes_transfarred);
-		    size_t next_chunk_size=atoi(data_len.c_str());
-		    respone_.commit(bytes_transfarred);
-
-			this->chunk_remain_size=next_chunk_size;
-
-			size_t read_size=chunk_remain_size<buffer_size?chunk_remain_size:buffer_size;
-			chunk_remain_size-=read_size;
-
-
-            boost::asio::async_read(m_sock,respone_,boost::asio::transfer_at_least(read_size)
-						,boost::bind(&reader::read_chunk_data,this,boost::asio::placeholders::error
-						,boost::asio::placeholders::bytes_transferred));
-
-
-        }
-        
-    }
-
-    void read_chunk_data(boost::system::error_code err,size_t bytes_transfarred)
-    {
-        
-    }
-
-
-
-
 
 	
 };

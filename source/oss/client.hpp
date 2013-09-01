@@ -38,23 +38,23 @@ namespace oss
 	    void DownObject(std::string bucketName,std::string objName,std::string path,ApiCallBack func,std::string newname="");
 	    void recvDownObject(boost::shared_ptr<echttp::respone> respone,std::string newname,ApiCallBack func);
 
-	    void initMultiUp(std::string bucketName,std::string objName,ApiCallBack func );
-	    void recvInitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
+	    //void initMultiUp(std::string bucketName,std::string objName,ApiCallBack func );
+	    //void recvInitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-	    void PutObject(std::string bucketName,std::string objName,std::string path,std::string upid,int partid,long pos,long size,ApiCallBack func);
-	    void CompleteUpload(std::string bucketName,std::string objectName,std::string upid,std::vector<UPTASK*> *tasklist,ApiCallBack func);
-	    void recvCompleteUpload(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
+	    //void PutObject(std::string bucketName,std::string objName,std::string path,std::string upid,int partid,long pos,long size,ApiCallBack func);
+	    //void CompleteUpload(std::string bucketName,std::string objectName,std::string upid,std::vector<UPTASK*> *tasklist,ApiCallBack func);
+	    //void recvCompleteUpload(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-	    void recvListListMulitUp(boost::shared_ptr<echttp::respone> respone,uploadsObjectList *objects,ApiCallBack func);
-	    void ListMulitUp(std::string bucketName,ApiCallBack func,std::string prefix="",std::string delemiter="/",std::string marker="",std::string maxKeys="100",uploadsObjectList *objects=NULL);
-	    void abortMulitUp(std::string  bucketName,std::string objectName,std::string upid,ApiCallBack func);
-	    void recvabortMulitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
+	    //void recvListListMulitUp(boost::shared_ptr<echttp::respone> respone,uploadsObjectList *objects,ApiCallBack func);
+	    //void ListMulitUp(std::string bucketName,ApiCallBack func,std::string prefix="",std::string delemiter="/",std::string marker="",std::string maxKeys="100",uploadsObjectList *objects=NULL);
+	    //void abortMulitUp(std::string  bucketName,std::string objectName,std::string upid,ApiCallBack func);
+	    //void recvabortMulitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-	    void createDir(string bucketName,string dirname,ApiCallBack func);
-	    void recvCreateDir(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
+	    //void createDir(string bucketName,string dirname,ApiCallBack func);
+	    //void recvCreateDir(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-        void deleteMulitFile(string bucketName,vector<string> filelist,ApiCallBack func);
-        void recvdeleteMulitFile(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
+     //   void deleteMulitFile(string bucketName,vector<string> filelist,ApiCallBack func);
+     //   void recvdeleteMulitFile(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
 
     private:
@@ -71,7 +71,7 @@ namespace oss
         this->mConfig.accesskey=accesskey;
         this->mConfig.host=host;
 
-        this->mHttp.Request.m_userAgent="OssBox";
+		this->mHttp.Request.set_defalut_userAgent("OssBox");
     }
 
     client::~client()
@@ -88,8 +88,8 @@ namespace oss
 
         std::string authStr= oss::auth::ossAuth(this->mConfig.accesskey,signstr);
 
-	    this->mHttp.Request.m_otherHeader["Date"]=date;
-	    this->mHttp.Request.m_otherHeader["Authorization"]=std::string("OSS ")+this->mConfig.accessid+":"+authStr;
+	    this->mHttp.Request.m_header.insert("Date",date);
+	    this->mHttp.Request.m_header.insert("Authorization",std::string("OSS ")+this->mConfig.accessid+":"+authStr);
     }
 
     void client::ListBucket(ApiCallBack func)
@@ -102,7 +102,7 @@ namespace oss
     {
         if(respone->body.get())
 	    {
-		    if(respone->statusCode==200)
+		    if(respone->status_code==200)
 		    {
 			    std::string sources=respone->body.get();
                 //result::ListBucketResult *buckets=new result::ListBucketResult;
@@ -127,16 +127,16 @@ namespace oss
 				    start=result[0].second;
 			    }
 
-			    func(respone->statusCode,sources,buckets.get());
+				func(respone->status_code,sources,buckets.get());
 
 
-		    }else if(respone->statusCode==403)
+		    }else if(respone->status_code==403)
 		    {
 			    func(403,"获取bucket失败，ID或者key错误!",NULL);
 		    }
 		    else
 		    {
-			    func(respone->statusCode,"获取bucket失败!",NULL);
+			    func(respone->status_code,"获取bucket失败!",NULL);
 		    }
 
 	    }
@@ -151,7 +151,7 @@ namespace oss
     //添加bucket，修改bucket权限
     void client::PutBucket(std::string bucketName,ApiCallBack func,std::string acl)
     {
-	    this->mHttp.Request.m_otherHeader["x-oss-acl"]=acl;
+		this->mHttp.Request.m_header.insert("x-oss-acl",acl);
 	    this->BuildOssSign("PUT","/","","","x-oss-acl="+acl+"\n");
         this->mHttp.Put("http://"+bucketName+"."+*mConfig.host,"",boost::bind(&client::recvPutBucket,this,_1,func));
     }
@@ -161,10 +161,10 @@ namespace oss
 	    if(respone->body.get())
 	    {
 		    std::string sources=respone->body.get();
-		    func(respone->statusCode,sources,NULL);
+		    func(respone->status_code,sources,NULL);
 	    }
 	    else
-		    func(respone->statusCode,"",NULL);
+		    func(respone->status_code,"",NULL);
 	
     }
 
@@ -182,10 +182,10 @@ namespace oss
 	    {
 		    std::string sources=respone->body.get();
 		    std::string acl=echttp::substr(sources,"<Grant>","</Grant>");
-		    func(respone->statusCode,sources,&acl);
+		    func(respone->status_code,sources,&acl);
 	    }else
 	    {
-		    func(respone->statusCode,"",NULL);
+		    func(respone->status_code,"",NULL);
 	    }
 
 	
@@ -204,10 +204,10 @@ namespace oss
 	    if(respone->body.get())
 	    {
 		    std::string sources=respone->body.get();
-		    func(respone->statusCode,sources,NULL);
+		    func(respone->status_code,sources,NULL);
 	    }else
 	    {
-		    func(respone->statusCode,"",NULL);
+		    func(respone->status_code,"",NULL);
 	    }
 
     }
@@ -243,33 +243,27 @@ namespace oss
 	    this->BuildOssSign("PUT","/"+bucketName+"/"+newName,md5,contentType);
 
         //添加额外header（cache等）
-        for(std::map<std::string,std::string>::iterator i=header.begin();i!=header.end;i++)
+        for(std::map<std::string,std::string>::iterator i=header.begin();i!=header.end();i++)
         {
-            this->mHttp.Request.m_otherHeader[i->first]=i->second;    
+            this->mHttp.Request.m_header.insert(i->first,i->second);    
         }
 	
-	    this->mHttp.Request.m_otherHeader["Content-Md5"]=md5;
-	    this->mHttp.Request.m_otherHeader["Content-Type"]=contentType;
-	    this->mHttp.Request.m_otherHeader["Content-Length"]=echttp::convert<std::string>(dataLen);
+	    this->mHttp.Request.m_header.insert("Content-Md5",md5);
+	    this->mHttp.Request.m_header.insert("Content-Type",contentType);
+	    this->mHttp.Request.m_header.insert("Content-Length",echttp::convert<std::string>(dataLen));
         this->mHttp.Put("http://"+bucketName+"."+*mConfig.host+"/"+newName,buf,dataLen,boost::bind(&client::recvPutObject,this,_1,func));
 	   
-        this->mHttp.Request.m_otherHeader["Content-Md5"]="";
-        //清空额外header，避免下次使用时带上
-        for(std::map<std::string,std::string>::iterator i=header.begin();i!=header.end;i++)
-        {
-            this->mHttp.Request.m_otherHeader[i->first]="";    
-        }
 
     }
 
     void client::recvPutObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
     {
-	    if(respone->statusCode==200)
+	    if(respone->status_code==200)
 	    {
-            func(200,respone->headerMap["ETag"],NULL);
+			func(200,respone->header.find("ETag"),NULL);
 	    }else
 	    {
-		    func(respone->statusCode,"",NULL);
+		    func(respone->status_code,"",NULL);
 	    }
 	
     }
@@ -290,14 +284,14 @@ namespace oss
 	    url=echttp::Utf8Encode(url);
 
 	    this->BuildOssSign("GET","/"+bucketName+"/");
-	    this->mHttp.Get(url,boost::bind(&client::recvListObject,this,_1,func,objects));
+	    this->mHttp.Get(url,boost::bind(&client::recvListObject,this,_1,func));
     }
 
     void client::recvListObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
     {
 	    if(respone->body.get())
 	    {
-		    if(respone->statusCode==200)
+		    if(respone->status_code==200)
 		    {
 			    std::string sources=respone->body.get(); 
 			    sources=echttp::Utf8Decode(sources);
@@ -350,11 +344,11 @@ namespace oss
 				    start1=result1[0].second;
 			    }
 
-				func(respone->statusCode,sources,listResult.get());
+				func(respone->status_code,sources,listResult.get());
 
 		    }else
 		    {
-			    func(respone->statusCode,respone->body.get(),NULL);
+			    func(respone->status_code,respone->body.get(),NULL);
 		    }
 
 	    }else
@@ -388,7 +382,7 @@ namespace oss
 
 	    if(respone->body.get())
 	    {
-		    if(respone->statusCode==200)
+		    if(respone->status_code==200)
 		    {
 			    //判断路径是否存在，不存在则创建
 			    namespace fs=boost::filesystem;
@@ -401,12 +395,12 @@ namespace oss
 			    std::ofstream file(newname,std::ios::binary);
 			    file.write(respone->body.get(),respone->length);
 			    file.close();
-			    func(respone->statusCode,"ok",NULL);
+			    func(respone->status_code,"ok",NULL);
 		    }else{
-			    func(respone->statusCode,respone->body.get(),NULL);
+			    func(respone->status_code,respone->body.get(),NULL);
 		    }
 	    }else{
-		    func(respone->statusCode,"",NULL);		
+		    func(respone->status_code,"",NULL);		
 	    }
 
     }

@@ -20,7 +20,7 @@ bool is_end;// 需要上传的数据是否已经全部读出
 bool header_end;
 bool is_ssl;
 
-up_task(std::string header,std::string data,bool isfile)
+up_task(std::string header,std::vector<char> data,bool isfile)
     :is_end(false)
     ,header_end(false) 
     ,is_file(isfile)
@@ -46,7 +46,7 @@ std::vector<char> get_write_data(size_t length)
     if(!header_end)
     {
         header_end=true;
-        if(data=="")
+		if(data.empty())
             this->is_end=true;
 
         return std::vector<char>(header.begin(),header.end());
@@ -58,7 +58,7 @@ std::vector<char> get_write_data(size_t length)
         }
         else
         {
-            return get_string_data(length);
+            return get_char_data(length);
         }
     }
 }
@@ -68,24 +68,26 @@ std::vector<char> get_write_data(size_t length)
 private:
 
 bool is_file;
-std::string data;
+std::vector<char> data;
 size_t pos;
 
 std::string header;
 
-std::vector<char> get_string_data(size_t length)
+std::vector<char> get_char_data(size_t length)
 {
-    size_t rest_size=data.size()-pos;
+    size_t rest_size=data.size()-pos;//剩余字节
 
     if(rest_size<=length)
     {
-        std::string tmp_str = data.substr(pos);
         this->is_end=true;
-        return std::vector<char>(tmp_str.begin(),tmp_str.end());
+		pos+=rest_size;
+        return data;
     }else{
-        std::string tmp_str = data.substr(pos,length);
-        pos+=length;
-        return std::vector<char>(tmp_str.begin(),tmp_str.end());
+        std::vector<char>buf(data.begin(),data.begin()+length);
+        data.erase(data.begin(),data.begin()+length);
+
+		pos+=length;
+        return buf;
     }
 }
 

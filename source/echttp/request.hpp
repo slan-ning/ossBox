@@ -36,28 +36,30 @@ public:
 	{
 	}
 
-    void set_task_connection(up_task &task,const url &u)
-    {
-        if(this->proxy_ip!="" && this->proxy_port!="")
-        {
-            task.ip=this->proxy_ip;
-            task.port=this->proxy_port;
-        }
-        if(u.protocol()=="https")
-        {
-            task.is_ssl=true;
-        }
+	void set_defalut_userAgent(std::string user_agent)
+	{
+		this->m_defalut_user_agent=user_agent;
+	}
 
-    }
+	void set_defalut_accept(std::string accept)
+	{
+		this->m_defalut_accept=accept;
+	}
 
-    up_task make_task(std::string method, url &u)
+	void set_defalut_connection(std::string connection)
+	{
+		this->m_defalut_connection=connection;
+	}
+    
+
+    up_task make_task(std::string method,const url &u)
     {
-        up_task task(this->get_header(method,u),"",false);
+        up_task task(this->get_header(method,u),std::vector<char>(),false);
         this->set_task_connection(task,u);
         return task;
     }
 
-    up_task make_task(std::string method, url &u,std::string data)
+    up_task make_task(std::string method, const url &u,std::vector<char> data)
     {
         this->m_header.insert("Content-Length",echttp::convert<std::string>(data.size()));
         if(method=="POST" && m_header.find("Content-Type")=="")
@@ -71,7 +73,7 @@ public:
         
     }
 
-    up_task make_file_task(std::string method, url &u,std::string path)
+    up_task make_file_task(std::string method,const url &u,std::vector<char> path)
     {
         size_t file_size=fs::file_size(path);
         this->m_header.insert("Content-Length",echttp::convert<std::string>(file_size));
@@ -90,7 +92,7 @@ private:
     std::string m_defalut_connection;
     std::string m_defalut_accept;
 
-    std::string get_header(std::string method, url &u)
+    std::string get_header(std::string method,const url &u)
     {
         this->set_common_header();
         this->m_header.insert("Host",u.host());
@@ -131,6 +133,20 @@ private:
         {
             this->m_header.insert("Accept",this->m_defalut_accept);
         }
+    }
+
+	void set_task_connection(up_task &task,const url &u)
+    {
+        if(this->proxy_ip!="" && this->proxy_port!="")
+        {
+            task.ip=this->proxy_ip;
+            task.port=this->proxy_port;
+        }
+        if(u.protocol()=="https")
+        {
+            task.is_ssl=true;
+        }
+
     }
 
 
