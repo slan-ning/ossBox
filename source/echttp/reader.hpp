@@ -12,7 +12,7 @@ public:
 private:
 
 	Tsock *m_sock;
-	boost::asio::streambuf respone_;
+	boost::asio::streambuf &respone_;
 	size_t chunk_remain_size;//chunk 剩余未读取的大小
 
 	size_t buffer_size;
@@ -58,11 +58,11 @@ public:
 
 		if(alreadly_size<buffer_size)
 		{
-		    boost::asio::read(*m_sock,respone_,boost::asio::transfer_at_least(len-alreadly_size));
+		    boost::asio::read(*m_sock,respone_,boost::asio::transfer_at_least(buffer_size-alreadly_size));
 		}
 
 		boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-		std::vector<char> content(bufs.begin(),bufs.begin()+lenbuffer_size;
+		std::vector<char> content(bufs.begin(),bufs.begin()+buffer_size);
 		respone_.commit(buffer_size);
 
 		return content;
@@ -95,7 +95,7 @@ public:
 			}else
 			{
 				this->m_chunk_end=true;
-				return std::vector<char>;
+				return std::vector<char>();
 			}
 
 		}

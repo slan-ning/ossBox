@@ -281,7 +281,7 @@ namespace echttp
 
 		if(!err)
 		{
-            m_respone->notify_status(m_task.total_size,m_task.get_pos());
+            m_respone->notify_status(1,m_task.total_size,m_task.get_pos());
 
             if(!m_task.is_end)
             {
@@ -463,7 +463,7 @@ namespace echttp
 				m_chunk_rest_size-=buf_size;
 				response_stream.read(&buf.front(),buf_size);
 
-				m_respone->save_body(buf,buf_size);
+				m_respone->save_body(buf);
 
 				if(m_chunk_rest_size==0)//这个块已经读完
 				{
@@ -508,7 +508,7 @@ namespace echttp
 				
 				response_stream.read(&buf.front(),m_chunk_rest_size);
 
-				m_respone->save_body(buf,m_chunk_rest_size);
+				m_respone->save_body(buf);
 				m_chunk_rest_size=0;
 
 				this->handle_chunk_size(err,buf_size-m_chunk_rest_size);
@@ -533,7 +533,7 @@ namespace echttp
 			std::vector<char> read_buf(bufs.begin(),bufs.begin()+buf_size);
 			respone_.commit(buf_size);
 
-			m_respone->save_body(read_buf,buf_size);
+			m_respone->save_body(read_buf);
 
 			if(m_respone->length<m_body_size)
 			{
@@ -584,7 +584,7 @@ namespace echttp
 				while (read_size<need_read_size)
 				{
 					std::vector<char> buf=reader.syn_read();
-					m_respone->save_body(buf,buf.size());
+					m_respone->save_body(buf);
 					read_size+=buf.size();
 
 				}
@@ -593,7 +593,7 @@ namespace echttp
 				while (!reader.m_chunk_end)
 				{
 					std::vector<char> buf=reader.syn_read_chunk_body();
-					m_respone->save_body(buf,buf.size());
+					m_respone->save_body(buf);
 				}
 			}
 
@@ -613,7 +613,7 @@ namespace echttp
 				while (read_size<need_read_size)
 				{
 					std::vector<char> buf=reader.syn_read();
-					m_respone->save_body(buf,buf.size());
+					m_respone->save_body(buf);
 					read_size+=buf.size();
 
 				}
@@ -622,7 +622,7 @@ namespace echttp
 				while (!reader.m_chunk_end)
 				{
 					std::vector<char> buf=reader.syn_read_chunk_body();
-					m_respone->save_body(buf,buf.size());
+					m_respone->save_body(buf);
 				}
 			}
 
