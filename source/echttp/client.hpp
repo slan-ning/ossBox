@@ -263,7 +263,10 @@ namespace echttp
 			deadline_.expires_from_now(boost::posix_time::seconds(nTimeOut));
 
             std::vector<char> buf=m_task.get_write_data(m_buffer_size);
-            boost::asio::async_write(ssl_sock,boost::asio::buffer(buf),
+            boost::shared_array<char> char_buf(new char[buf.size()]);
+			memcpy(char_buf.get(),&buf.front(),buf.size());
+
+            boost::asio::async_write(ssl_sock,boost::asio::buffer(char_buf.get(),buf.size()),
 				boost::bind(&client::handle_write,this,boost::asio::placeholders::error,
 				boost::asio::placeholders::bytes_transferred));
 		}
@@ -286,16 +289,18 @@ namespace echttp
             if(!m_task.is_end)
             {
                  std::vector<char> buf=m_task.get_write_data(m_buffer_size);
+                 boost::shared_array<char> char_buf(new char[buf.size()]);
+				 memcpy(char_buf.get(),&buf.front(),buf.size());
 
                 if(protocol_==1)
 			    {
-                    boost::asio::async_write(ssl_sock,boost::asio::buffer(buf),
+                    boost::asio::async_write(ssl_sock,boost::asio::buffer(char_buf.get(),buf.size()),
 				        boost::bind(&client::handle_write,this,boost::asio::placeholders::error,
 				        boost::asio::placeholders::bytes_transferred));
                 }
                 else
                 {
-                    boost::asio::async_write(socket_,boost::asio::buffer(buf),
+                    boost::asio::async_write(socket_,boost::asio::buffer(char_buf.get(),buf.size()),
 					    boost::bind(&client::handle_write,this,boost::asio::placeholders::error,
 					    boost::asio::placeholders::bytes_transferred));
                 }

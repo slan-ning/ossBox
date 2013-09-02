@@ -75,8 +75,12 @@ public:
 
     up_task make_file_task(std::string method,const url &u,std::vector<char> path)
     {
-        size_t file_size=fs::file_size(path);
-        this->m_header.insert("Content-Length",echttp::convert<std::string>(file_size));
+        if (this->m_header.find("Content-Type")=="")
+        {
+            size_t file_size=fs::file_size(path);
+            this->m_header.insert("Content-Length",echttp::convert<std::string>(file_size));
+        }
+       
         if(method=="POST" && m_header.find("Content-Type")=="")
         {
             this->m_header.insert("Content-Type","application/x-www-form-urlencoded");

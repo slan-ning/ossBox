@@ -23,7 +23,7 @@ int _tmain(int argc, _TCHAR* argv[])
     {
        
 		api[i]=new oss::client("d4032gett1s9jndmpnphfe76","6Z2G7vDJPSldB/i0xAJmiO0npCQ=",&host);
-		api[i]->PutObject("oss-box","d:/edfs.txt",boost::bind(back,_1,_2,_3,i));
+		api[i]->PutObject("oss-box","d:/1.png",boost::bind(back,_1,_2,_3,i));
         Sleep(10);
 		i++;
     }

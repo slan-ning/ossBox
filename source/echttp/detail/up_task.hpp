@@ -26,6 +26,7 @@ up_task(std::string header,std::vector<char> data,bool isfile)
     ,is_file(isfile)
     ,pos(0)
     ,is_ssl(false)
+    ,data(data)
 {
     this->header=header;
 

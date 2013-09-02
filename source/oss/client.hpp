@@ -264,95 +264,95 @@ namespace oss
     }
 
 
-   // 
-   // //list Object
-   // void client::ListObject(std::string bucketName,ApiCallBack func,std::string prefix,std::string delimiter,std::string marker,std::string maxKeys)
-   // {
-	  //  std::string url="http://"+bucketName+"."+*mConfig.host+"/?max-keys="+maxKeys;
+    
+    //list Object
+    void client::ListObject(std::string bucketName,ApiCallBack func,std::string prefix,std::string delimiter,std::string marker,std::string maxKeys)
+    {
+	    std::string url="http://"+bucketName+"."+*mConfig.host+"/?max-keys="+maxKeys;
 
-	  //  url+="&prefix="+prefix+"&delimiter="+delimiter;
+	    url+="&prefix="+prefix+"&delimiter="+delimiter;
 
-	  //  if(marker!="")
-	  //  {
-		 //   url+="&marker="+marker;
-	  //  }
-	  //  url=echttp::Utf8Encode(url);
+	    if(marker!="")
+	    {
+		    url+="&marker="+marker;
+	    }
+	    url=echttp::Utf8Encode(url);
 
-	  //  this->BuildOssSign("GET","/"+bucketName+"/");
-	  //  this->mHttp.Get(url,boost::bind(&client::recvListObject,this,_1,func));
-   // }
+	    this->BuildOssSign("GET","/"+bucketName+"/");
+	    this->mHttp.Get(url,boost::bind(&client::recvListObject,this,_1,func));
+    }
 
-   // void client::recvListObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
-   // {
-	  //  if(respone->body.get())
-	  //  {
-		 //   if(respone->status_code==200)
-		 //   {
-			//    std::string sources=respone->body.get(); 
-			//    sources=echttp::Utf8Decode(sources);
+    void client::recvListObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
+    {
+        if(!respone->body.empty())
+	    {
+		    if(respone->status_code==200)
+		    {
+			    std::string sources(respone->body.begin(),respone->body.end()); 
+			    sources=echttp::Utf8Decode(sources);
 
-   //             boost::shared_ptr<result::ListObjectResult> listResult(new result::ListObjectResult);
+                boost::shared_ptr<result::ListObjectResult> listResult(new result::ListObjectResult);
 
-			//    //提取文件信息
-			//    boost::smatch result;
-			//    std::string regtxt("<Contents>.*?<Key>(.*?)</Key>.*?<LastModified>(.*?)</LastModified>.*?<ETag>(.*?)</ETag>.*?<Size>(.*?)</Size>.*?</Contents>");
-			//    boost::regex rx(regtxt);
+			    //提取文件信息
+			    boost::smatch result;
+			    std::string regtxt("<Contents>.*?<Key>(.*?)</Key>.*?<LastModified>(.*?)</LastModified>.*?<ETag>(.*?)</ETag>.*?<Size>(.*?)</Size>.*?</Contents>");
+			    boost::regex rx(regtxt);
 
-			//    std::string::const_iterator start,end;
-			//    start=sources.begin();
-			//    end=sources.end();
+			    std::string::const_iterator start,end;
+			    start=sources.begin();
+			    end=sources.end();
 
-			//    if(sources.find("<NextMarker>")!=std::string::npos)
-   //                 listResult->nextMarker=echttp::substr(sources,"<NextMarker>","</NextMarker>");
-			//    else
-			//	    listResult->nextMarker="";
+			    if(sources.find("<NextMarker>")!=std::string::npos)
+                    listResult->nextMarker=echttp::substr(sources,"<NextMarker>","</NextMarker>");
+			    else
+				    listResult->nextMarker="";
 
-			//    while(boost::regex_search(start,end,result,rx))
-			//    {
-			//	    std::string path=result[1];
-   //                 std::string etag=result[3];
-   //                 boost::trim(etag);
+			    while(boost::regex_search(start,end,result,rx))
+			    {
+				    std::string path=result[1];
+                    std::string etag=result[3];
+                    boost::trim(etag);
 
-			//	    result::Object ossObject;
-			//	    ossObject.key=path;
-   //                 ossObject.etag=etag;
-			//	    ossObject.size=echttp::convert<int>(result[4]);
-			//	    ossObject.time=result[2];
-   //                 listResult->objectList.push_back(ossObject);
-			//	    start=result[0].second;
-			//    }
+				    result::Object ossObject;
+				    ossObject.key=path;
+                    ossObject.etag=etag;
+				    ossObject.size=echttp::convert<int>(result[4]);
+				    ossObject.time=result[2];
+                    listResult->objectList.push_back(ossObject);
+				    start=result[0].second;
+			    }
 
 
-			//    //提取文件夹列表信息
-			//    boost::smatch result1;
-			//    std::string regtxt1("<CommonPrefixes>.*?<Prefix>(.*?)</Prefix>.*?</CommonPrefixes>");
-			//    boost::regex rx1(regtxt1);
+			    //提取文件夹列表信息
+			    boost::smatch result1;
+			    std::string regtxt1("<CommonPrefixes>.*?<Prefix>(.*?)</Prefix>.*?</CommonPrefixes>");
+			    boost::regex rx1(regtxt1);
 
-			//    std::string::const_iterator start1,end1;
-			//    start1=sources.begin();
-			//    end1=sources.end();
+			    std::string::const_iterator start1,end1;
+			    start1=sources.begin();
+			    end1=sources.end();
 
-			//    while(boost::regex_search(start1,end1,result1,rx1))
-			//    {
-			//	    std::string dir=result1[1];
-   //                 listResult->folderList.push_back(dir);
-			//	    start1=result1[0].second;
-			//    }
+			    while(boost::regex_search(start1,end1,result1,rx1))
+			    {
+				    std::string dir=result1[1];
+                    listResult->folderList.push_back(dir);
+				    start1=result1[0].second;
+			    }
 
-			//	func(respone->status_code,sources,listResult.get());
+				func(respone->status_code,sources,listResult.get());
 
-		 //   }else
-		 //   {
-			//    func(respone->status_code,respone->body.get(),NULL);
-		 //   }
+		    }else
+		    {
+			    func(respone->status_code,respone->body.get(),NULL);
+		    }
 
-	  //  }else
-	  //  {
-		 //   func(-1,"连接错误",NULL);
-	  //  }
-   // }
+	    }else
+	    {
+		    func(-1,"连接错误",NULL);
+	    }
+    }
 
-   // 
+    
    // //下载object
    // void client::DownObject(std::string bucketName,std::string objName,std::string path,client::ApiCallBack func,std::string newname)
    // {
