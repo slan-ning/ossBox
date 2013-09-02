@@ -4,25 +4,34 @@
 #include "stdafx.h"
 #include "../oss/client.hpp"
 
-void back(int code,std::string msg,void* ptr)
+std::string host="oss.aliyuncs.com";
+oss::client *api[50];
+
+void back(int code,std::string msg,void* ptr,int num)
 {
-    std::cout<<msg;
+    std::cout<<code;
+	std::cout<<msg;
+	//delete api[num];
+	//api[num]->ListBucket(boost::bind(back,_1,_2,_3,num));
 }
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-    std::string host="oss.aliyuncs.com";
-    oss::client api= oss::client("d4032gett1s9jndmpnphfe76","6Z2G7vDJPSldB/i0xAJmiO0npCQ=",&host);
+   
     int i=0;
-    while(i<100)
+    while(i<1)
     {
-        i++;
-        api.ListBucket(boost::bind(back,_1,_2,_3));
+       
+		api[i]=new oss::client("d4032gett1s9jndmpnphfe76","6Z2G7vDJPSldB/i0xAJmiO0npCQ=",&host);
+		api[i]->PutObject("oss-box","d:/edfs.txt",boost::bind(back,_1,_2,_3,i));
         Sleep(10);
+		i++;
     }
     
     std::cin>>host;
     
 	return 0;
 }
+
+
 

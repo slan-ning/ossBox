@@ -42,7 +42,6 @@ namespace echttp
 		int m_header_size;
 		int m_body_size;
 		size_t m_chunk_rest_size;
-		char* m_readBuf;
 
 		up_task m_task;
 		boost::shared_ptr<respone> m_respone;
@@ -77,7 +76,6 @@ namespace echttp
 			nTimeOut=10000;
 			has_stop=true;
 			m_respone=boost::shared_ptr<respone>(new respone);
-			m_readBuf=NULL;
 		}
 
     client::client(boost::asio::io_service& io_service,up_task task,boost::shared_ptr<respone> respone)
@@ -92,7 +90,6 @@ namespace echttp
 		{
 			nTimeOut=10000;
 			has_stop=true;
-			m_readBuf=NULL;
 		}
 
     client::~client()
@@ -188,7 +185,7 @@ namespace echttp
         }
 
         // Put the actor back to sleep.
-        deadline_.async_wait(boost::bind(&client::check_deadline, this));
+        deadline_.async_wait(boost::bind(&client::check_deadline, this,boost::asio::placeholders::error));
 	}
 
     void client::stop()
@@ -240,7 +237,10 @@ namespace echttp
 			else
 			{
                 std::vector<char> buf=m_task.get_write_data(m_buffer_size);
-				boost::asio::async_write(socket_,boost::asio::buffer(buf),
+				boost::shared_array<char> char_buf(new char[buf.size()]);
+				memcpy(char_buf.get(),&buf.front(),buf.size());
+
+				boost::asio::async_write(socket_,boost::asio::buffer(char_buf.get(),buf.size()),
 					boost::bind(&client::handle_write,this,boost::asio::placeholders::error,
 					boost::asio::placeholders::bytes_transferred));
 			}
@@ -339,8 +339,8 @@ namespace echttp
 			int read_size=respone_.size();
 
 			boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-			std::string header(bufs.begin(),bufs.begin()+m_header_size);
-			respone_.commit(m_header_size);
+			std::string header(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs) + m_header_size);
+			respone_.consume(m_header_size);
 
 			if(!m_respone->parse_header(header))
 			{
@@ -411,7 +411,7 @@ namespace echttp
 		if(!err||err.value()==2)
 		{
 			boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-		    std::string  data_len(bufs.begin(),bufs.begin()+bytes_transfarred);
+		    std::string  data_len(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+bytes_transfarred);
 
 		    size_t next_chunk_size=atoi(data_len.c_str());
 		    respone_.commit(bytes_transfarred);
@@ -530,8 +530,8 @@ namespace echttp
 		{
 			size_t buf_size=respone_.size();
 			boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-			std::vector<char> read_buf(bufs.begin(),bufs.begin()+buf_size);
-			respone_.commit(buf_size);
+			std::vector<char> read_buf(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+buf_size);
+			respone_.consume(buf_size);
 
 			m_respone->save_body(read_buf);
 

@@ -65,13 +65,13 @@ namespace oss
 	//¼ÓÃÜº¯Êı
     std::string string_md5(std::string str)
     {
-        unsigned char md[16];
+        unsigned char md[MD5_DIGEST_LENGTH];
         char tmp[33]={'\0'};
         std::string hash="";
 
         MD5((const unsigned char*)str.c_str(), str.size(), md);
 
-        for(int i=0; i<16; i++){
+        for(int i=0; i<MD5_DIGEST_LENGTH; i++){
                 sprintf(tmp, "%02X", md[i]);
                 hash+=(std::string)tmp;
         }
@@ -82,7 +82,7 @@ namespace oss
     std::string char_md5(char* data,size_t len)
     {
         MD5_CTX md5;
-        unsigned char md[16];
+        unsigned char md[MD5_DIGEST_LENGTH];
         //char tmp[3]={'\0'};
         int i;
         std::string hash="";
@@ -99,10 +99,32 @@ namespace oss
         }*/
         //boost::to_lower(hash);
         // memcpy(md5str,hash.c_str(),32);
-        hash=echttp::base64Encode(md,16);
+        hash=echttp::base64Encode(md,MD5_DIGEST_LENGTH);
                 
         return hash;
     }
+
+	std::string file_md5(std::string file_path)
+	{
+		unsigned char c[MD5_DIGEST_LENGTH];
+		int i;
+		FILE *inFile = fopen (file_path.c_str(), "rb");
+		MD5_CTX mdContext;
+		int bytes;
+		unsigned char data[1024];
+
+		if (inFile == NULL) {
+			return "";
+		}
+
+		MD5_Init (&mdContext);
+		while ((bytes = fread (data, 1, 1024, inFile)) != 0)
+			MD5_Update (&mdContext, data, bytes);
+		MD5_Final (c,&mdContext);
+
+		std::string hash = echttp::base64Encode(c,MD5_DIGEST_LENGTH);
+        return hash;
+	}
 
     bool isFile(std::string filePath)
     {

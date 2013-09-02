@@ -141,19 +141,20 @@ namespace echttp
 			return ;
 		}
 
-
-		void MessageBack(boost::shared_ptr<respone> result,HttpCallBack cb,client *client)
+		//http clientµÄ»Øµ÷£¬É¾³ýhttpclient
+		void MessageBack(boost::shared_ptr<respone> result,HttpCallBack cb,client *httpclient)
 		{
 
 			if(cb!=NULL)
 			{
 				cb(result);
 			}
-			if(client!=NULL)
+
+			if(httpclient)
 			{
-				delete client;
-				client=NULL;
+				delete httpclient;
 			}
+			
 		}
 
         void RegisterStatusCallBack(StatusCallBack cb)
@@ -254,7 +255,7 @@ namespace echttp
                 m_status_callback=0;
             }
 
-            boost::shared_ptr<client> httpClient(new client(*m_ioServ,task,respone_));
+            client* httpClient=new client(*m_ioServ,task,respone_);
 
 			httpClient->send(boost::bind(&http::MessageBack,this,_1,cb,httpClient));
 			return ;
@@ -272,7 +273,7 @@ namespace echttp
                 m_status_callback=0;
             }
 
-			boost::shared_ptr<client> httpClient(new client(*m_ioServ,task,respone_));
+			client* httpClient=new client(*m_ioServ,task,respone_);
 
 			httpClient->send(boost::bind(&http::MessageBack,this,_1,cb,httpClient));
 			return ;
@@ -367,7 +368,7 @@ namespace echttp
                 m_status_callback=0;
             }
 
-            boost::shared_ptr<client> httpClient(new client(*m_ioServ,task,respone_));
+            client* httpClient=new client(*m_ioServ,task,respone_);
 
 			httpClient->send(boost::bind(&http::MessageBack,this,_1,cb,httpClient));
 
@@ -386,7 +387,7 @@ namespace echttp
                 m_status_callback=0;
             }
 
-            boost::shared_ptr<client> httpClient(new client(*m_ioServ,task,respone_));
+            client* httpClient=new client(*m_ioServ,task,respone_);
 
 			httpClient->send(boost::bind(&http::MessageBack,this,_1,cb,httpClient));
 
@@ -404,7 +405,7 @@ namespace echttp
                 m_status_callback=0;
             }
 
-            boost::shared_ptr<client> httpClient(new client(*m_ioServ,task,respone_));
+            client* httpClient=new client(*m_ioServ,task,respone_);
 
 			httpClient->send(boost::bind(&http::MessageBack,this,_1,cb,httpClient));
 
@@ -423,7 +424,7 @@ namespace echttp
                 m_status_callback=0;
             }
 
-            boost::shared_ptr<client> httpClient(new client(*m_ioServ,task,respone_));
+            client* httpClient=new client(*m_ioServ,task,respone_);
 
 			httpClient->send(boost::bind(&http::MessageBack,this,_1,cb,httpClient));
 
@@ -440,7 +441,7 @@ namespace echttp
                 respone_->register_notify_callback(m_status_callback);
                 m_status_callback=0;
             }
-            boost::shared_ptr<client> httpClient(new client(*m_ioServ,task,respone_));
+            client* httpClient=new client(*m_ioServ,task,respone_);
 
 			httpClient->send(boost::bind(&http::MessageBack,this,_1,cb,httpClient));
 
@@ -458,7 +459,7 @@ namespace echttp
                 respone_->register_notify_callback(m_status_callback);
                 m_status_callback=0;
             }
-            boost::shared_ptr<client> httpClient(new client(*m_ioServ,task,respone_));
+            client* httpClient=new client(*m_ioServ,task,respone_);
 
 			httpClient->send(boost::bind(&http::MessageBack,this,_1,cb,httpClient));
 

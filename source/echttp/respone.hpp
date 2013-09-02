@@ -42,6 +42,7 @@ private:
 
 respone::respone()
     :m_status_cb(0)
+	,length(0)
 {
 }
 
@@ -58,7 +59,7 @@ bool respone::parse_header(std::string header_str)
 		this->status_code=convert<int,std::string>(h);
 
 		boost::smatch result;
-		std::string regtxt("\\b(\\w+?): (.*?)\r\n");
+		std::string regtxt("\\b(.+?): (.*?)\r\n");
 		boost::regex rx(regtxt);
 
 		std::string::const_iterator it=header_str.begin();
@@ -101,6 +102,7 @@ bool respone::save_body(std::vector<char> buffer)
         }
         myfile.close();
     }
+	return true;
 }
 
 void respone::register_notify_callback(StatusCallBack cb)

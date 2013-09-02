@@ -141,7 +141,11 @@ private:
         {
             task.ip=this->proxy_ip;
             task.port=this->proxy_port;
-        }
+        }else
+		{
+			task.ip=u.host();
+			task.port=echttp::convert<std::string>(u.port());
+		}
         if(u.protocol()=="https")
         {
             task.is_ssl=true;
