@@ -98,21 +98,21 @@ namespace echttp
 			return ;
 		}
 
-        ///�첽PUT����put�����ݴ��ļ���ȡ
-        // @url ����url
-        // @file_path ���͵��ļ�·��
-        // @cb �첽�ص�����
-        // @status_cb д�룬��ȡ��״̬�ص���
+        ///异步PUT请求，put的数据从文件读取
+        // @url 请求url
+        // @file_path 发送的文件路径
+        // @cb 异步回调函数
+        // @status_cb 写入，读取的状态回调�?
         void PutFromFile(std::string url,std::string file_path,HttpCallBack cb,size_t pos=0,size_t size=0)
 		{
             this->_post_file("PUT",url,file_path,cb,pos,size);
 			return ;
 		}
 
-        ///ͬ��PUT����put�����ݴ��ļ���ȡ
-        // @url ����url
-        // @file_path ���͵��ļ�·��
-        // @ status_cb д�룬��ȡ��״̬�ص���
+        ///同步PUT请求，put的数据从文件读取
+        // @url 请求url
+        // @file_path 发送的文件路径
+        // @ status_cb 写入，读取的状态回调�?
         boost::shared_ptr<respone> PutFromFile(std::string url,std::string file_path,size_t pos=0,size_t size=0)
 		{
 			return this->_post_file("PUT",url,file_path,pos,size);
@@ -129,19 +129,19 @@ namespace echttp
 			return ;
 		}
 
-        ///�첽PUT���󣬲������д���ļ�
-        // @url ����url
-        // @data ���͵�vector<char>����
-        // @save_path �������ݱ�����ļ�·��
-        // @cb �첽�ص�����
-        // @ status_cb д�룬��ȡ��״̬�ص���
+        ///异步PUT请求，并将结果写入文�?
+        // @url 请求url
+        // @data 发送的vector<char>数据
+        // @save_path 返回数据保存的文件路�?
+        // @cb 异步回调函数
+        // @ status_cb 写入，读取的状态回调�?
         void PutToFile(std::string url,std::vector<char> data,std::string save_path,HttpCallBack cb)
 		{
 			this->_post("PUT",url,data,save_path,cb);
 			return ;
 		}
 
-		//http client�Ļص���ɾ��httpclient
+		//http client的回调，删除httpclient
 		void MessageBack(boost::shared_ptr<respone> result,HttpCallBack cb,client *httpclient)
 		{
 
@@ -198,7 +198,7 @@ namespace echttp
 		}
 
 
-        //����get����,delete֮���
+        //类似get方法,delete之类�?
         boost::shared_ptr<respone> _get(std::string method,std::string url)
 		{
 
@@ -233,7 +233,7 @@ namespace echttp
             {
                 respone_->register_notify_callback(m_status_callback);
                 m_status_callback=0;
-            } //ע���д״̬�ص�
+            } //注册读写状态回�?
 
 			client client(*m_ioServ,task,respone_);
 
@@ -281,7 +281,7 @@ namespace echttp
 
 
 
-        //����post����
+        //类似post方法
         boost::shared_ptr<respone> _post(std::string method,std::string url,std::string data)
 		{
 			up_task  task=this->Request.make_task(method,url,std::vector<char>(data.begin(),data.end()));

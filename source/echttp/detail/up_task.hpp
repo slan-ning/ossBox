@@ -16,7 +16,7 @@ std::string port;
 
 size_t total_size;
 
-bool is_end;// 需要上传的数据是否已经全部读出
+bool is_end;// 闇�瑕佷笂浼犵殑鏁版嵁鏄惁宸茬粡鍏ㄩ儴璇诲嚭
 bool header_end;
 bool is_ssl;
 
@@ -79,7 +79,7 @@ std::string header;
 
 std::vector<char> get_char_data(size_t length)
 {
-    size_t rest_size=data.size()-pos;//剩余字节
+    size_t rest_size=data.size()-pos;//鍓╀綑瀛楄妭
 
     if(rest_size<=length)
     {

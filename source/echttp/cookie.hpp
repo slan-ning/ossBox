@@ -8,9 +8,9 @@ namespace echttp
 class cookie_option
 {
 public:
-	// ¶¨Òåoption_itemÀàĞÍ.
+	// å®šä¹‰option_itemç±»å‹.
 	typedef std::pair<std::string, std::string> option_item;
-	// ¶¨Òåoption_item_listÀàĞÍ.
+	// å®šä¹‰option_item_listç±»å‹.
 	typedef std::vector<option_item> option_item_list;
 	// for boost::assign::insert
 	typedef option_item value_type;
@@ -20,21 +20,21 @@ public:
 
 public:
 
-	// Ìí¼ÓÑ¡Ïî, ÓÉkey/valueĞÎÊ½Ìí¼Ó.
+	// æ·»åŠ é€‰é¡¹, ç”±key/valueå½¢å¼æ·»åŠ .
 	void insert(const std::string& key, const std::string& val)
 	{
         remove(key);
 		m_opts.push_back(option_item(key, val));
 	}
 
-	// Ìí¼ÓÑ¡Ïî£¬ÓÉ std::part ĞÎÊ½.
+	// æ·»åŠ é€‰é¡¹ï¼Œç”± std::part å½¢å¼.
 	void insert(value_type& item)
 	{
         remove(item.first);
 		m_opts.push_back(item);
 	}
 
-	// É¾³ıÑ¡Ïî.
+	// åˆ é™¤é€‰é¡¹.
 	cookie_option& remove(const std::string& key)
 	{
 		for (option_item_list::iterator i = m_opts.begin(); i != m_opts.end(); i++)
@@ -48,7 +48,7 @@ public:
 		return *this;
 	}
 
-	// ²éÕÒÖ¸¶¨keyµÄvalue.
+	// æŸ¥æ‰¾æŒ‡å®škeyçš„value.
 	bool find(const std::string& key, std::string& val) const
 	{
 		std::string s = key;
@@ -66,7 +66,7 @@ public:
 		return false;
 	}
 
-	// ²éÕÒÖ¸¶¨µÄ key µÄ value. Ã»ÕÒµ½·µ»Ø ""£¬¡¡ÕâÊÇ¸öÍµÀÁµÄ°ïÖú.
+	// æŸ¥æ‰¾æŒ‡å®šçš„ key çš„ value. æ²¡æ‰¾åˆ°è¿”å› ""ï¼Œã€€è¿™æ˜¯ä¸ªå·æ‡’çš„å¸®åŠ©.
 	std::string find(const std::string& key) const
 	{
 		std::string v;
@@ -74,7 +74,7 @@ public:
 		return v;
 	}
 
-	// µÃµ½cookie×Ö·û´®.
+	// å¾—åˆ°cookieå­—ç¬¦ä¸².
 	std::string cookie_string() const
 	{
 		std::string str;
@@ -85,7 +85,7 @@ public:
 		return str;
 	}
 
-    //´Óheader×Ö·û´®ÕıÔòÌæ»»cookie 
+    //ä»headerå­—ç¬¦ä¸²æ­£åˆ™æ›¿æ¢cookie 
     void parse_header(const std::string &header)
     {
         boost::smatch result;
@@ -106,19 +106,19 @@ public:
 		}
     }
 
-	// Çå¿Õ.
+	// æ¸…ç©º.
 	void clear()
 	{
 		m_opts.clear();
 	}
 
-	// ·µ»ØËùÓĞoption.
+	// è¿”å›æ‰€æœ‰option.
 	option_item_list& option_all()
 	{
 		return m_opts;
 	}
 
-	// ·µ»Øµ±Ç°option¸öÊı.
+	// è¿”å›å½“å‰optionä¸ªæ•°.
 	int size() const
 	{
 		return m_opts.size();

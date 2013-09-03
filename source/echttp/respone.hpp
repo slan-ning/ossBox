@@ -17,15 +17,15 @@ public:
     ~respone();
 
     int         error_code;
-	std::string error_msg;//错误信息
+	std::string error_msg;//閿欒淇℃伅
 
-    int status_code;//http状态码
-    header_option header;//返回头部
+    int status_code;//http鐘舵�佺爜
+    header_option header;//杩斿洖澶撮儴
 
-    size_t length;//返回内容大小
-	std::vector<char> body;//返回内容
+    size_t length;//杩斿洖鍐呭澶у皬
+	std::vector<char> body;//杩斿洖鍐呭
 
-    std::string save_path;//保存文件path，若下载文件，则此值为文件路径
+    std::string save_path;//淇濆瓨鏂囦欢path锛岃嫢涓嬭浇鏂囦欢锛屽垯姝ゅ�间负鏂囦欢璺緞
 
 	bool parse_header(std::string);
 
