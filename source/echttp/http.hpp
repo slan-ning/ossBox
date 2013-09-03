@@ -103,9 +103,9 @@ namespace echttp
         // @file_path 发送的文件路径
         // @cb 异步回调函数
         // @status_cb 写入，读取的状态回调。
-        void PutFromFile(std::string url,std::string file_path,HttpCallBack cb)
+        void PutFromFile(std::string url,std::string file_path,HttpCallBack cb,size_t pos=0,size_t size=0)
 		{
-            this->_post_file("PUT",url,file_path,cb);
+            this->_post_file("PUT",url,file_path,cb,pos,size);
 			return ;
 		}
 
@@ -113,9 +113,9 @@ namespace echttp
         // @url 请求url
         // @file_path 发送的文件路径
         // @ status_cb 写入，读取的状态回调。
-        boost::shared_ptr<respone> PutFromFile(std::string url,std::string file_path)
+        boost::shared_ptr<respone> PutFromFile(std::string url,std::string file_path,size_t pos=0,size_t size=0)
 		{
-			return this->_post_file("PUT",url,file_path);
+			return this->_post_file("PUT",url,file_path,pos,size);
 		}
 
         boost::shared_ptr<respone> PutToFile(std::string url,std::string data,std::string save_path)
@@ -319,9 +319,9 @@ namespace echttp
 			return respone;
 		}
 
-        boost::shared_ptr<respone> _post_file(std::string method,std::string url,std::string file_path)
+        boost::shared_ptr<respone> _post_file(std::string method,std::string url,std::string file_path,size_t pos=0,size_t size=0)
 		{
-			up_task  task=this->Request.make_file_task(method,url,std::vector<char>(file_path.begin(),file_path.end()));
+			up_task  task=this->Request.make_file_task(method,url,std::vector<char>(file_path.begin(),file_path.end()),pos,size);
 
             boost::shared_ptr<respone> respone_(new respone());
             if(m_status_callback)
@@ -337,9 +337,9 @@ namespace echttp
 			return respone;
 		}
 
-        boost::shared_ptr<respone> _post_file(std::string method,std::string url,std::string file_path,std::string save_path)
+        boost::shared_ptr<respone> _post_file(std::string method,std::string url,std::string file_path,std::string save_path,size_t pos=0,size_t size=0)
 		{
-			up_task  task=this->Request.make_file_task(method,url,std::vector<char>(file_path.begin(),file_path.end()));
+			up_task  task=this->Request.make_file_task(method,url,std::vector<char>(file_path.begin(),file_path.end()),pos,size);
 
             boost::shared_ptr<respone> respone_(new respone());
             respone_->save_path=save_path;
@@ -394,9 +394,9 @@ namespace echttp
 			return ;
 		}
 
-        void _post_file(std::string method,std::string url,std::string file_path,HttpCallBack cb)
+        void _post_file(std::string method,std::string url,std::string file_path,HttpCallBack cb,size_t pos=0,size_t size=0)
 		{
-			up_task  task=this->Request.make_file_task(method,url,std::vector<char>(file_path.begin(),file_path.end()));
+			up_task  task=this->Request.make_file_task(method,url,std::vector<char>(file_path.begin(),file_path.end()),pos,size);
 
             boost::shared_ptr<respone> respone_(new respone());
             if(m_status_callback)
@@ -412,9 +412,9 @@ namespace echttp
 			return ;
 		}
 
-        void _post_file(std::string method,std::string url,std::string file_path,std::string save_path,HttpCallBack cb)
+        void _post_file(std::string method,std::string url,std::string file_path,std::string save_path,HttpCallBack cb,size_t pos=0,size_t size=0)
 		{
-            up_task  task=this->Request.make_file_task(method,url,std::vector<char>(file_path.begin(),file_path.end()));
+            up_task  task=this->Request.make_file_task(method,url,std::vector<char>(file_path.begin(),file_path.end()),pos,size);
 
             boost::shared_ptr<respone> respone_(new respone());
             respone_->save_path=save_path;

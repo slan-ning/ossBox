@@ -12,6 +12,7 @@ namespace oss
     {
     public:
         typedef boost::function<void(int,std::string,void*)> ApiCallBack;
+		typedef	boost::function<void(int type,size_t total,size_t now)> StatusCallBack;
 
         client(std::string accessid,std::string accesskey,std::string* host);
         ~client();
@@ -29,32 +30,34 @@ namespace oss
 	    void recvDeleteBucket(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
         void PutObject(std::string bucketName,std::string objName,ApiCallBack func,std::string newName=""
-            ,std::map<std::string,std::string> header=std::map<std::string,std::string>());
+            ,std::map<std::string,std::string> header=std::map<std::string,std::string>()
+			,StatusCallBack status_cb=0
+			);
 	    void recvPutObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
 	    void ListObject(std::string bucketName,ApiCallBack func,std::string prefix="",std::string delemiter="/",std::string marker="",std::string maxKeys="100");
 	    void recvListObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-	    void DownObject(std::string bucketName,std::string objName,std::string path,ApiCallBack func,std::string newname="");
-	    void recvDownObject(boost::shared_ptr<echttp::respone> respone,std::string newname,ApiCallBack func);
+	    void DownObject(std::string bucketName,std::string objName,std::string path,ApiCallBack func,std::string newname="",StatusCallBack status_cb=0);
+	    void recvDownObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-	    /*void initMultiUp(std::string bucketName,std::string objName,ApiCallBack func );
+	    void InitMultiUp(std::string bucketName,std::string objName,ApiCallBack func );
 	    void recvInitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
 	    void PutObject(std::string bucketName,std::string objName,std::string path,std::string upid,int partid,long pos,long size,ApiCallBack func);
-	    void CompleteUpload(std::string bucketName,std::string objectName,std::string upid,std::vector<UPTASK*> *tasklist,ApiCallBack func);
+		void CompleteUpload(std::string bucketName,std::string objectName,std::string upid,result::MultiUpTaskPartList *tasklist,ApiCallBack func);
 	    void recvCompleteUpload(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-	    void recvListListMulitUp(boost::shared_ptr<echttp::respone> respone,uploadsObjectList *objects,ApiCallBack func);
-	    void ListMulitUp(std::string bucketName,ApiCallBack func,std::string prefix="",std::string delemiter="/",std::string marker="",std::string maxKeys="100",uploadsObjectList *objects=NULL);
-	    void abortMulitUp(std::string  bucketName,std::string objectName,std::string upid,ApiCallBack func);
+	    void recvListMulitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
+	    void ListMulitUp(std::string bucketName,ApiCallBack func,std::string prefix="",std::string delemiter="/",std::string marker="",std::string maxKeys="100");
+	    void AbortMulitUp(std::string  bucketName,std::string objectName,std::string upid,ApiCallBack func);
 	    void recvabortMulitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-	    void createDir(string bucketName,string dirname,ApiCallBack func);
+	    void CreateDir(std::string bucketName,std::string dirname,ApiCallBack func);
 	    void recvCreateDir(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
-        void deleteMulitFile(string bucketName,vector<string> filelist,ApiCallBack func);
-        void recvdeleteMulitFile(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);*/
+        void DeleteMulitFile(std::string bucketName,std::vector<std::string> filelist,ApiCallBack func);
+        void recvdeleteMulitFile(boost::shared_ptr<echttp::respone> respone,ApiCallBack func);
 
 
     private:
@@ -215,7 +218,8 @@ namespace oss
 
 
     //上传object
-    void client::PutObject(std::string bucketName,std::string objName,ApiCallBack func,std::string newName,std::map<std::string,std::string> header)
+    void client::PutObject(std::string bucketName,std::string objName,ApiCallBack func,std::string newName,
+		std::map<std::string,std::string> header,StatusCallBack status_cb)
     {
 	    objName=echttp::replace_all(objName,"\\","/");
 	    if(newName =="")
@@ -237,6 +241,11 @@ namespace oss
 	    std::string md5=file_md5(objName);
 
 	    this->BuildOssSign("PUT","/"+bucketName+"/"+newName,md5,contentType);
+
+		if(status_cb)
+		{
+			this->mHttp.RegisterStatusCallBack(status_cb);
+		}
 
         //添加额外header（cache等）
         for(std::map<std::string,std::string>::iterator i=header.begin();i!=header.end();i++)
@@ -343,7 +352,7 @@ namespace oss
 
 		    }else
 		    {
-			    func(respone->status_code,respone->body.get(),NULL);
+			    func(respone->status_code,std::string(respone->body.begin(),respone->body.end()),NULL);
 		    }
 
 	    }else
@@ -353,50 +362,291 @@ namespace oss
     }
 
     
-   // //下载object
-   // void client::DownObject(std::string bucketName,std::string objName,std::string path,client::ApiCallBack func,std::string newname)
-   // {
+    //下载object
+    void client::DownObject(std::string bucketName,std::string objName,std::string path,client::ApiCallBack func,std::string newname,StatusCallBack status_cb)
+    {
 
-	  //  objName=echttp::replace_all(objName,"\\","/");
-	  //  path=echttp::replace_all(path,"\\","/");
+	    objName=echttp::replace_all(objName,"\\","/");
+	    path=echttp::replace_all(path,"\\","/");
 
-	  //  if(path[path.size()-1]=='/')
-	  //  {
-		 //   std::string filename=(objName.find_last_of("/")!=std::string::npos)?objName.substr(objName.find_last_of("/")):objName;
-		 //   filename=(newname=="")?filename:newname;
-		 //   path=path+filename;
-	  //  }
-	  //  objName=echttp::Utf8Encode(objName);
-	  //  objName=echttp::UrlEncode(objName);
-	  //  this->BuildOssSign("GET","/"+bucketName+"/"+objName);
-	  //  this->mHttp.Get("http://"+bucketName+"."+*mConfig.host+"/"+objName,boost::bind(&client::recvDownObject,this,_1,path,func));
-   // }
+	    if(path[path.size()-1]=='/')
+	    {
+		    std::string filename=(objName.find_last_of("/")!=std::string::npos)?objName.substr(objName.find_last_of("/")):objName;
+		    filename=(newname=="")?filename:newname;
+		    path=path+filename;
+	    }
+	    objName=echttp::Utf8Encode(objName);
+	    objName=echttp::UrlEncode(objName);
+	    this->BuildOssSign("GET","/"+bucketName+"/"+objName);
+		
+		if(status_cb)
+		{
+			this->mHttp.RegisterStatusCallBack(status_cb);
+		}
+	    this->mHttp.Get("http://"+bucketName+"."+*mConfig.host+"/"+objName,path,boost::bind(&client::recvDownObject,this,_1,func));
+    }
 
-   // void client::recvDownObject(boost::shared_ptr<echttp::respone> respone,std::string newname,ApiCallBack func)
-   // {
+    void client::recvDownObject(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
+    {
 
-	  //  if(respone->body.get())
-	  //  {
-		 //   if(respone->status_code==200)
-		 //   {
-			//    //判断路径是否存在，不存在则创建
-			//    namespace fs=boost::filesystem;
-			//    fs::path path(newname);
-			//    fs::path dirpath=path.parent_path();
-			//    if(!fs::exists(dirpath)){
-			//	    fs::create_directories(dirpath);
-			//    }
+		if(!respone->body.empty())
+	    {
+		    if(respone->status_code==200)
+		    {
+			    func(respone->status_code,"ok",NULL);
+		    }else{
+			    func(respone->status_code,std::string(respone->body.begin(),respone->body.end()),NULL);
+		    }
+	    }else{
+		    func(respone->status_code,"",NULL);		
+	    }
 
-			//    std::ofstream file(newname,std::ios::binary);
-			//    file.write(respone->body.get(),respone->length);
-			//    file.close();
-			//    func(respone->status_code,"ok",NULL);
-		 //   }else{
-			//    func(respone->status_code,respone->body.get(),NULL);
-		 //   }
-	  //  }else{
-		 //   func(respone->status_code,"",NULL);		
-	  //  }
+    }
 
-   // }
+
+	//以下为分块操作函数
+	//初始化分块
+	void client::InitMultiUp(std::string bucketName,std::string objName,ApiCallBack func )
+	{
+
+		std::string contentType=echttp::FileContentType(objName);
+		objName=echttp::Utf8Encode(objName);
+		objName=echttp::UrlEncode(objName);
+		this->mHttp.Request.m_header.insert("Content-Type",contentType);
+		this->BuildOssSign("POST","/"+bucketName+"/"+objName+"?uploads","",contentType);
+		this->mHttp.Post("http://"+bucketName+"."+*mConfig.host+"/"+objName+"?uploads","",boost::bind(&client::recvInitUp,this,_1,func));
+
+	}
+
+	void client::recvInitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
+	{
+
+		if(!respone->body.empty())
+		{
+			if(respone->status_code==200)
+			{
+				std::string  sources(respone->body.begin(),respone->body.end());
+				std::string  upid=echttp::substr(sources,"<UploadId>","</UploadId>");
+
+				func(200,upid,NULL);
+
+			}else
+			{
+				func(respone->status_code,std::string(respone->body.begin(),respone->body.end()),NULL);
+			}
+
+		}else
+		{
+			func(respone->status_code,"连接错误",NULL);
+		}
+	}
+
+	//上传object
+	void client::PutObject(std::string bucketName,std::string objName,std::string path,std::string upid,int partid,long pos,long size,ApiCallBack func)
+	{
+		objName=echttp::replace_all(objName,"\\","/");
+		objName=echttp::Utf8Encode(objName);
+		objName=echttp::UrlEncode(objName);
+
+
+		std::string filePartId=echttp::convert<std::string>(partid+1);
+		std::string url="http://"+bucketName+"."+*mConfig.host+"/"+objName+"?partNumber="+filePartId+"&uploadId="+upid;
+
+
+		std::string contentType=echttp::FileContentType(objName);
+	
+
+		char * data=NULL;
+		size_t dataLen=0;
+		dataLen=fileToChar(path,data,pos,size);//size 传0表示整个文件大小
+		std::string md5=(dataLen>0)?char_md5(data,dataLen):"";
+
+		delete data;
+
+		this->BuildOssSign("PUT","/"+bucketName+"/"+objName+"?partNumber="+filePartId+"&uploadId="+upid,md5,contentType);
+	
+		this->mHttp.Request.m_header.insert("Content-Md5",md5);
+		this->mHttp.Request.m_header.insert("Content-Type",contentType);
+		this->mHttp.Request.m_header.insert("Content-Length",echttp::convert<std::string>(dataLen));
+
+		this->mHttp.PutFromFile(url,path,boost::bind(&client::recvPutObject,this,_1,func));
+	}
+
+	void client::CompleteUpload(std::string bucketName,std::string objectName,std::string upid,result::MultiUpTaskPartList *tasklist,ApiCallBack func)
+	{
+		std::string  host=bucketName+".oss.aliyuncs.com";
+		std::string pstr="<CompleteMultipartUpload>";
+
+		for(int i=0;i<tasklist->size();i++)
+		{
+			pstr+="<Part>";
+			pstr+="<PartNumber>"+echttp::convert<std::string>(i+1)+"</PartNumber>";
+			pstr+="<ETag>"+echttp::replace_all(tasklist->at(i).ETag,"\"","")+"</ETag>";
+			pstr+="</Part>";
+		}
+
+		pstr+="</CompleteMultipartUpload>";
+		objectName=echttp::Utf8Encode(objectName);
+		objectName=echttp::UrlEncode(objectName);
+		this->BuildOssSign("POST","/"+bucketName+"/"+objectName+"?uploadId="+upid,"","application/x-www-form-urlencoded");
+		this->mHttp.Post("http://"+bucketName+"."+*mConfig.host+"/"+objectName+"?uploadId="+upid,pstr,boost::bind(&client::recvCompleteUpload,this,_1,func));
+	}
+
+	void client::recvCompleteUpload(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
+	{
+		if(!respone->body.empty())
+		{
+			std::string sources(respone->body.begin(),respone->body.end());
+			func(respone->status_code,sources,NULL);
+		}else
+		{
+			func(respone->status_code,"",NULL);
+		}
+	}
+
+	void client::AbortMulitUp(std::string  bucketName,std::string objectName,std::string upid,ApiCallBack func)
+	{
+		this->BuildOssSign("POST","/"+bucketName+"/"+objectName+"?uploadId="+upid);
+		this->mHttp.Delete("http://"+bucketName+"."+*mConfig.host+"/?uploadId="+upid,boost::bind(&client::recvabortMulitUp,this,_1,func));
+	}
+
+	void client::recvabortMulitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
+	{
+
+		if(!respone->body.empty())
+		{
+			std::string sources(respone->body.begin(),respone->body.end());
+			func(respone->status_code,sources,NULL);
+		}else
+		{
+			func(respone->status_code,"",NULL);
+		}
+	}
+
+	//list Object
+	void client::ListMulitUp(std::string bucketName,ApiCallBack func,std::string prefix,std::string delemiter,
+		std::string marker,std::string maxKeys)
+	{
+		std::string url="http://"+bucketName+"."+*mConfig.host+"/?uploads&max-uploads="+maxKeys;
+		if(prefix!="")
+		{
+			url+="&prefix="+prefix+"&delemiter="+delemiter;
+		}
+		if(marker!="")
+		{
+			url+="&key-marker="+marker;
+		}
+
+		this->BuildOssSign("GET","/"+bucketName+"/?uploads");
+		this->mHttp.Get(url,boost::bind(&client::recvListMulitUp,this,_1,func));
+	}
+
+	void client::recvListMulitUp(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
+	{
+		if(respone->status_code>0)
+		{
+			if(!respone->body.empty())
+			{
+				std::string sources(respone->body.begin(),respone->body.end()); 
+				sources=echttp::Utf8Decode(sources);
+
+				boost::shared_ptr<result::MultiUpTaskList> upTaskList(new result::MultiUpTaskList);
+
+				//提取文件信息
+				boost::smatch result;
+				std::string regtxt("<Upload>.*?<Key>(.*?)</Key>.*?<UploadId>(.*?)</UploadId>.*?<Initiated>(.*?)</Initiated>.*?</Upload>");
+				boost::regex rx(regtxt);
+
+				std::string::const_iterator start,end;
+				start=sources.begin();
+				end=sources.end();
+
+				if(sources.find("<NextKeyMarker>")!=std::string::npos)
+					upTaskList->keyMarker=echttp::substr(sources,"<NextKeyMarker>","</NextKeyMarker>");
+				else
+					upTaskList->keyMarker="";
+
+				while(boost::regex_search(start,end,result,rx))
+				{
+					std::string path=result[1];
+					result::MultiUpTask task;
+					task.key=path;
+					task.time=echttp::convert<int>(result[3]);
+					task.upid=result[2];
+					upTaskList->taskList.push_back(task);
+					start=result[0].second;
+				}
+				
+				func(respone->status_code,sources,upTaskList.get());	
+
+			}else
+			{
+				func(respone->status_code,"",NULL);
+			}
+
+		}else
+		{
+			func(respone->status_code,"连接错误",NULL);
+		}
+	}
+
+	//创建目录
+	void client::CreateDir(std::string bucketName,std::string dirname,ApiCallBack func)
+	{
+		this->BuildOssSign("PUT","/"+bucketName+"/"+dirname+"/");
+		this->mHttp.Request.m_header.insert("Content-Length","0");
+		this->mHttp.Put("http://"+bucketName+"."+*mConfig.host+"/"+dirname+"/","",boost::bind(&client::recvCreateDir,this,_1,func));
+	}
+
+	void client::recvCreateDir(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
+	{
+		if(respone->status_code>0)
+		{
+			std::string sources(respone->body.begin(),respone->body.end());
+			func(respone->status_code,sources,NULL);
+		}else
+		{
+			func(respone->status_code,"",NULL);
+		}
+	}
+
+	void client::DeleteMulitFile(std::string bucketName,std::vector<std::string> filelist,ApiCallBack func)
+	{
+		std::string pstr="<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete><Quiet>true</Quiet> ";
+
+		for(int i=0;i<filelist.size();i++)
+		{
+			pstr+="<Object>";
+			pstr+="<Key>"+filelist[i]+"</Key>";
+			pstr+="</Object>";
+		}
+		pstr+="</Delete>";
+		pstr=echttp::Utf8Encode(pstr);
+
+		char * data=new char [pstr.length()];
+		memset(data,0,pstr.length());
+		memcpy(data,pstr.c_str(),pstr.length());
+
+		std::string md5=char_md5(data,pstr.length());
+		delete[] data;
+
+		this->mHttp.Request.m_header.insert("Content-Md5",md5);
+
+		this->BuildOssSign("POST","/"+bucketName+"/?delete",md5,"application/x-www-form-urlencoded");
+		this->mHttp.Post("http://"+bucketName+"."+*mConfig.host+"/?delete",pstr,boost::bind(&client::recvdeleteMulitFile,this,_1,func));
+
+	}
+
+	void client::recvdeleteMulitFile(boost::shared_ptr<echttp::respone> respone,ApiCallBack func)
+	{
+		if(!respone->body.empty())
+		{
+			std::string sources(respone->body.begin(),respone->body.end());
+			func(respone->status_code,sources,NULL);
+		}else
+		{
+			func(respone->status_code,"",NULL);
+		}
+	}
+
 }

@@ -20,18 +20,20 @@ bool is_end;// 需要上传的数据是否已经全部读出
 bool header_end;
 bool is_ssl;
 
-up_task(std::string header,std::vector<char> data,bool isfile)
+up_task(std::string header,std::vector<char> data,bool isfile,size_t pos=0,size_t up_size=0)
     :is_end(false)
     ,header_end(false) 
     ,is_file(isfile)
-    ,pos(0)
+    ,pos(pos)
+	,start_pos(pos)
     ,is_ssl(false)
     ,data(data)
 {
     this->header=header;
 
     if(isfile){
-        total_size=fs::file_size(data);
+        total_size=up_size>0?up_size:fs::file_size(data);
+
     }else{
         total_size=data.size();
     }
@@ -70,6 +72,7 @@ private:
 
 bool is_file;
 std::vector<char> data;
+size_t start_pos;
 size_t pos;
 
 std::string header;
@@ -94,7 +97,7 @@ std::vector<char> get_char_data(size_t length)
 
 std::vector<char> get_file_data(size_t length)
 {
-    size_t rest_size=fs::file_size(data)-pos;
+    size_t rest_size=total_size-(pos-start_pos);
 
     if(rest_size<=length)
     {
@@ -125,7 +128,7 @@ std::vector<char> get_file_data(size_t length)
         {
             myfile.read(buf,pos,length);
             pos+=length;
-            std::vector<char> vectorBuf(buf,buf+rest_size);
+            std::vector<char> vectorBuf(buf,buf+length);
             delete[] buf;
             return vectorBuf;
         }else

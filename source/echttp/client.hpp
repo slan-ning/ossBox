@@ -71,7 +71,7 @@ namespace echttp
 			ssl_sock(socket_,ctx),
 			deadline_(io_service),
             m_task(task),
-            m_buffer_size(1048576)
+            m_buffer_size(1024)
 		{
 			nTimeOut=10000;
 			has_stop=true;
@@ -85,7 +85,7 @@ namespace echttp
 			ssl_sock(socket_,ctx),
 			deadline_(io_service),
             m_task(task),
-            m_buffer_size(1048576),
+            m_buffer_size(1024),
             m_respone(respone)
 		{
 			nTimeOut=10000;
@@ -364,17 +364,19 @@ namespace echttp
 				std::string len=m_respone->header.find("Content-Length");
 				m_body_size=atoi(len.c_str());
 
+				size_t read_size=m_body_size-body_already_read_size < m_buffer_size ? m_body_size-body_already_read_size :m_buffer_size;
+
 				if(protocol_==1)
 				{
 
-					boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(m_body_size-body_already_read_size)
+					boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(read_size)
 						,boost::bind(&client::handle_body_read,this,boost::asio::placeholders::error
 						,boost::asio::placeholders::bytes_transferred));
 
 				}
 				else
 				{
-					boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(m_body_size-body_already_read_size)
+					boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(read_size)
 						,boost::bind(&client::handle_body_read,this,boost::asio::placeholders::error
 						,boost::asio::placeholders::bytes_transferred));
 				}
@@ -539,6 +541,8 @@ namespace echttp
 			respone_.consume(buf_size);
 
 			m_respone->save_body(read_buf);
+
+			m_respone->notify_status(2,this->m_body_size,m_respone->length);
 
 			if(m_respone->length<m_body_size)
 			{

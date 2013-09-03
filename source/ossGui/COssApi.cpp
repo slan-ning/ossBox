@@ -1,13 +1,13 @@
 #include "StdAfx.h"
-#include "COssApi.h"
+#include "client.h"
 #include <iostream>
-#include "weblib.h"
+#include "echttp.h"
 #include <fstream>
 #include <boost\filesystem.hpp>
 
 using namespace std;
 
-COssApi::COssApi(std::string accessid,std::string accesskey,std::string* host)
+client::client(std::string accessid,std::string accesskey,std::string* host)
 {
 	this->mAccessId=accessid;
 	this->mAccessKey=accesskey;
@@ -15,20 +15,20 @@ COssApi::COssApi(std::string accessid,std::string accesskey,std::string* host)
 	this->mHttp.Request.m_userAgent="ossBox4.0";
 }
 
-COssApi::~COssApi()
+client::~client()
 {
 
 }
 
 //列bucket
 
-void COssApi::ListBucket(ApiCallBack func)
+void client::ListBucket(ApiCallBack func)
 {
 	this->getOssSign("GET","/");
-	this->mHttp.Get("http://"+*m_host,boost::bind(&COssApi::recvListBucket,this,_1,func));
+	this->mHttp.Get("http://"+*m_host,boost::bind(&client::recvListBucket,this,_1,func));
 }
 
-void COssApi::recvListBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
+void client::recvListBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
 	if(respone->msg.get())
 	{
@@ -71,14 +71,14 @@ void COssApi::recvListBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack 
 }
 
 //添加bucket，修改bucket权限
-void COssApi::PutBucket(std::string bucketName,ApiCallBack func,std::string acl)
+void client::PutBucket(std::string bucketName,ApiCallBack func,std::string acl)
 {
 	this->mHttp.Request.m_otherHeader["x-oss-acl"]=acl;
 	this->getOssSign("PUT","/","","","x-oss-acl="+acl+"\n");
-        this->mHttp.Put("http://"+bucketName+"."+*m_host,"",boost::bind(&COssApi::recvPutBucket,this,_1,func));
+        this->mHttp.Put("http://"+bucketName+"."+*m_host,"",boost::bind(&client::recvPutBucket,this,_1,func));
 }
 
-void COssApi::recvPutBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
+void client::recvPutBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
 	if(respone->msg.get())
 	{
@@ -91,18 +91,18 @@ void COssApi::recvPutBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack f
 }
 
 //获取bucket权限
-void COssApi::GetBucketAcl(std::string bucketName,ApiCallBack func)
+void client::GetBucketAcl(std::string bucketName,ApiCallBack func)
 {
 	this->getOssSign("GET","/?acl");
-	this->mHttp.Get("http://"+bucketName+"."+*m_host+"/?acl",boost::bind(&COssApi::recvBucketAcl,this,_1,func));
+	this->mHttp.Get("http://"+bucketName+"."+*m_host+"/?acl",boost::bind(&client::recvBucketAcl,this,_1,func));
 }
 
-void COssApi::recvBucketAcl(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
+void client::recvBucketAcl(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
 	if(respone->msg.get())
 	{
 		std::string sources=respone->msg.get();
-		string acl=weblib::substr(sources,"<Grant>","</Grant>");
+		string acl=echttp::substr(sources,"<Grant>","</Grant>");
 		func(respone->statusCode,sources,&acl);
 	}else
 	{
@@ -113,13 +113,13 @@ void COssApi::recvBucketAcl(boost::shared_ptr<CWebRespone> respone,ApiCallBack f
 }
 
 //删除bucket
-void COssApi::DeleteBucket(std::string bucketName,ApiCallBack func)
+void client::DeleteBucket(std::string bucketName,ApiCallBack func)
 {
 	this->getOssSign("DELETE","/");
-	this->mHttp.Delete("http://"+bucketName+"."+*m_host+"/",boost::bind(&COssApi::recvBucketAcl,this,_1,func));
+	this->mHttp.Delete("http://"+bucketName+"."+*m_host+"/",boost::bind(&client::recvBucketAcl,this,_1,func));
 }
 
-void COssApi::recvDeleteBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
+void client::recvDeleteBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
 	if(respone->msg.get())
 	{
@@ -134,7 +134,7 @@ void COssApi::recvDeleteBucket(boost::shared_ptr<CWebRespone> respone,ApiCallBac
 
 
 //list Object
-void COssApi::ListObject(std::string bucketName,ApiCallBack func,std::string prefix,std::string delimiter,std::string marker,std::string maxKeys,objectList *objects)
+void client::ListObject(std::string bucketName,ApiCallBack func,std::string prefix,std::string delimiter,std::string marker,std::string maxKeys,objectList *objects)
 {
 	if (objects==NULL)
 	{
@@ -151,20 +151,20 @@ void COssApi::ListObject(std::string bucketName,ApiCallBack func,std::string pre
 	{
 		url+="&marker="+marker;
 	}
-	url=weblib::Utf8Encode(url);
+	url=echttp::Utf8Encode(url);
 
 	this->getOssSign("GET","/"+bucketName+"/");
-	this->mHttp.Get(url,boost::bind(&COssApi::recvListObject,this,_1,func,objects));
+	this->mHttp.Get(url,boost::bind(&client::recvListObject,this,_1,func,objects));
 }
 
-void COssApi::recvListObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack func,objectList *objects)
+void client::recvListObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack func,objectList *objects)
 {
 	if(respone->msg.get())
 	{
 		if(respone->statusCode==200)
 		{
 			std::string sources=respone->msg.get(); 
-			sources=weblib::Utf8Decode(sources);
+			sources=echttp::Utf8Decode(sources);
 
 			//提取文件信息
 			boost::smatch result;
@@ -176,7 +176,7 @@ void COssApi::recvListObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack 
 			end=sources.end();
 
 			if(sources.find("<NextMarker>")!=std::string::npos)
-				objects->marker=weblib::substr(sources,"<NextMarker>","</NextMarker>");
+				objects->marker=echttp::substr(sources,"<NextMarker>","</NextMarker>");
 			else
 				objects->marker="";
 
@@ -185,7 +185,7 @@ void COssApi::recvListObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack 
 				string path=result[1];
 				Object *ossObject=new Object;
 				ossObject->path=path;
-				ossObject->size=weblib::convert<int>(result[3]);
+				ossObject->size=echttp::convert<int>(result[3]);
 				ossObject->time=result[2];
 				objects->lists.push_back(ossObject);
 				start=result[0].second;
@@ -230,9 +230,9 @@ void COssApi::recvListObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack 
 
 
 //上传object
-void COssApi::PutObject(std::string bucketName,std::string objName,ApiCallBack func,std::string newName)
+void client::PutObject(std::string bucketName,std::string objName,ApiCallBack func,std::string newName)
 {
-	objName=weblib::replace_all(objName,"\\","/");
+	objName=echttp::replace_all(objName,"\\","/");
 	if(newName =="")
 	{
 		if(objName.find_last_of('/')!=std::string::npos)
@@ -244,15 +244,15 @@ void COssApi::PutObject(std::string bucketName,std::string objName,ApiCallBack f
 		}
 
 	}
-	newName=weblib::Utf8Encode(newName);
-	newName=weblib::UrlEncode(newName);
+	newName=echttp::Utf8Encode(newName);
+	newName=echttp::UrlEncode(newName);
 	std::string contentType=this->getContentType(objName);
 	
 
 	char * data=NULL;
     size_t dataLen=0;
 	dataLen=oss::fileToChar(objName,data,0,0);//size 传0表示整个文件大小
-	std::string md5=(dataLen>0)?weblib::char_md5(data,dataLen):"";
+	std::string md5=(dataLen>0)?echttp::char_md5(data,dataLen):"";
 
 	boost::shared_array<char> buf=boost::shared_array<char>(data);
 
@@ -260,12 +260,12 @@ void COssApi::PutObject(std::string bucketName,std::string objName,ApiCallBack f
 	
 	this->mHttp.Request.m_otherHeader["Content-Md5"]=md5;
 	this->mHttp.Request.m_otherHeader["Content-Type"]=contentType;
-	this->mHttp.Request.m_otherHeader["Content-Length"]=weblib::convert<std::string>(dataLen);
-	this->mHttp.PutChar("http://"+bucketName+"."+*m_host+"/"+newName,buf,dataLen,boost::bind(&COssApi::recvPutObject,this,_1,func));
+	this->mHttp.Request.m_otherHeader["Content-Length"]=echttp::convert<std::string>(dataLen);
+	this->mHttp.PutChar("http://"+bucketName+"."+*m_host+"/"+newName,buf,dataLen,boost::bind(&client::recvPutObject,this,_1,func));
 	this->mHttp.Request.m_otherHeader["Content-Md5"]="";
 }
 
-void COssApi::recvPutObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
+void client::recvPutObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
 	if(respone->statusCode==200)
 	{
@@ -278,11 +278,11 @@ void COssApi::recvPutObject(boost::shared_ptr<CWebRespone> respone,ApiCallBack f
 }
 
 //下载object
-void COssApi::downObject(std::string bucketName,std::string objName,std::string path,ApiCallBack func,string newname)
+void client::downObject(std::string bucketName,std::string objName,std::string path,ApiCallBack func,string newname)
 {
 
-	objName=weblib::replace_all(objName,"\\","/");
-	path=weblib::replace_all(path,"\\","/");
+	objName=echttp::replace_all(objName,"\\","/");
+	path=echttp::replace_all(path,"\\","/");
 
 	if(path[path.size()-1]=='/')
 	{
@@ -290,13 +290,13 @@ void COssApi::downObject(std::string bucketName,std::string objName,std::string 
 		filename=(newname=="")?filename:newname;
 		path=path+filename;
 	}
-	objName=weblib::Utf8Encode(objName);
-	objName=weblib::UrlEncode(objName);
+	objName=echttp::Utf8Encode(objName);
+	objName=echttp::UrlEncode(objName);
 	this->getOssSign("GET","/"+bucketName+"/"+objName);
-	this->mHttp.Get("http://"+bucketName+"."+*m_host+"/"+objName,boost::bind(&COssApi::recvGetObject,this,_1,path,func));
+	this->mHttp.Get("http://"+bucketName+"."+*m_host+"/"+objName,boost::bind(&client::recvGetObject,this,_1,path,func));
 }
 
-void COssApi::recvGetObject(boost::shared_ptr<CWebRespone> respone,std::string newname,ApiCallBack func)
+void client::recvGetObject(boost::shared_ptr<CWebRespone> respone,std::string newname,ApiCallBack func)
 {
 
 	if(respone->msg.get())
@@ -328,19 +328,19 @@ void COssApi::recvGetObject(boost::shared_ptr<CWebRespone> respone,std::string n
 
 //以下为分块操作函数
 //初始化分块
-void COssApi::initMultiUp(std::string bucketName,string objName,ApiCallBack func )
+void client::initMultiUp(std::string bucketName,string objName,ApiCallBack func )
 {
 
 	string contentType=this->getContentType(objName);
-	objName=weblib::Utf8Encode(objName);
-	objName=weblib::UrlEncode(objName);
+	objName=echttp::Utf8Encode(objName);
+	objName=echttp::UrlEncode(objName);
 	this->mHttp.Request.m_otherHeader["Content-Type"]=contentType;
 	this->getOssSign("POST","/"+bucketName+"/"+objName+"?uploads","",contentType);
-	this->mHttp.Post("http://"+bucketName+"."+*m_host+"/"+objName+"?uploads","",boost::bind(&COssApi::recvInitUp,this,_1,func));
+	this->mHttp.Post("http://"+bucketName+"."+*m_host+"/"+objName+"?uploads","",boost::bind(&client::recvInitUp,this,_1,func));
 
 }
 
-void COssApi::recvInitUp(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
+void client::recvInitUp(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
 
 	if(respone->msg.get())
@@ -348,7 +348,7 @@ void COssApi::recvInitUp(boost::shared_ptr<CWebRespone> respone,ApiCallBack func
 		if(respone->statusCode==200)
 		{
 			string sources=respone->msg.get();
-			string upid=weblib::substr(sources,"<UploadId>","</UploadId>");
+			string upid=echttp::substr(sources,"<UploadId>","</UploadId>");
 
 			func(200,upid,NULL);
 
@@ -364,14 +364,14 @@ void COssApi::recvInitUp(boost::shared_ptr<CWebRespone> respone,ApiCallBack func
 }
 
 //上传object
-void COssApi::PutObject(std::string bucketName,std::string objName,std::string path,string upid,int partid,long pos,long size,ApiCallBack func)
+void client::PutObject(std::string bucketName,std::string objName,std::string path,string upid,int partid,long pos,long size,ApiCallBack func)
 {
-	objName=weblib::replace_all(objName,"\\","/");
-	objName=weblib::Utf8Encode(objName);
-	objName=weblib::UrlEncode(objName);
+	objName=echttp::replace_all(objName,"\\","/");
+	objName=echttp::Utf8Encode(objName);
+	objName=echttp::UrlEncode(objName);
 
 
-	string filePartId=weblib::convert<string>(partid+1);
+	string filePartId=echttp::convert<string>(partid+1);
 	std::string url="http://"+bucketName+"."+*m_host+"/"+objName+"?partNumber="+filePartId+"&uploadId="+upid;
 
 
@@ -380,8 +380,8 @@ void COssApi::PutObject(std::string bucketName,std::string objName,std::string p
 
 	char * data=NULL;
     size_t dataLen=0;
-	dataLen=weblib::fileToChar(path,data,pos,size);//size 传0表示整个文件大小
-	std::string md5=(dataLen>0)?weblib::char_md5(data,dataLen):"";
+	dataLen=echttp::fileToChar(path,data,pos,size);//size 传0表示整个文件大小
+	std::string md5=(dataLen>0)?echttp::char_md5(data,dataLen):"";
 
 	boost::shared_array<char> buf=boost::shared_array<char>(data);
 
@@ -389,13 +389,13 @@ void COssApi::PutObject(std::string bucketName,std::string objName,std::string p
 	
 	this->mHttp.Request.m_otherHeader["Content-Md5"]=md5;
 	this->mHttp.Request.m_otherHeader["Content-Type"]=contentType;
-	this->mHttp.Request.m_otherHeader["Content-Length"]=weblib::convert<std::string>(dataLen);
+	this->mHttp.Request.m_otherHeader["Content-Length"]=echttp::convert<std::string>(dataLen);
 
-	this->mHttp.PutChar(url,buf,dataLen,boost::bind(&COssApi::recvPutObject,this,_1,func));
+	this->mHttp.PutChar(url,buf,dataLen,boost::bind(&client::recvPutObject,this,_1,func));
 	this->mHttp.Request.m_otherHeader["Content-Md5"]="";
 }
 
-void COssApi::CompleteUpload(std::string bucketName,std::string objectName,std::string upid,vector<UPTASK*> *tasklist,ApiCallBack func)
+void client::CompleteUpload(std::string bucketName,std::string objectName,std::string upid,vector<UPTASK*> *tasklist,ApiCallBack func)
 {
 	string  host=bucketName+".oss.aliyuncs.com";
 	string pstr="<CompleteMultipartUpload>";
@@ -403,19 +403,19 @@ void COssApi::CompleteUpload(std::string bucketName,std::string objectName,std::
 	for(int i=0;i<tasklist->size();i++)
 	{
 		pstr+="<Part>";
-		pstr+="<PartNumber>"+weblib::convert<std::string>(i+1)+"</PartNumber>";
-		pstr+="<ETag>"+weblib::replace_all(tasklist->at(i)->ETag,"\"","")+"</ETag>";
+		pstr+="<PartNumber>"+echttp::convert<std::string>(i+1)+"</PartNumber>";
+		pstr+="<ETag>"+echttp::replace_all(tasklist->at(i)->ETag,"\"","")+"</ETag>";
 		pstr+="</Part>";
 	}
 
 	pstr+="</CompleteMultipartUpload>";
-	objectName=weblib::Utf8Encode(objectName);
-	objectName=weblib::UrlEncode(objectName);
+	objectName=echttp::Utf8Encode(objectName);
+	objectName=echttp::UrlEncode(objectName);
 	this->getOssSign("POST","/"+bucketName+"/"+objectName+"?uploadId="+upid,"","application/x-www-form-urlencoded");
-	this->mHttp.Post("http://"+bucketName+"."+*m_host+"/"+objectName+"?uploadId="+upid,pstr,boost::bind(&COssApi::recvCompleteUpload,this,_1,func));
+	this->mHttp.Post("http://"+bucketName+"."+*m_host+"/"+objectName+"?uploadId="+upid,pstr,boost::bind(&client::recvCompleteUpload,this,_1,func));
 }
 
-void COssApi::recvCompleteUpload(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
+void client::recvCompleteUpload(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
 	if(respone->msg.get())
 	{
@@ -427,13 +427,13 @@ void COssApi::recvCompleteUpload(boost::shared_ptr<CWebRespone> respone,ApiCallB
 	}
 }
 
-void COssApi::abortMulitUp(std::string  bucketName,std::string objectName,std::string upid,ApiCallBack func)
+void client::abortMulitUp(std::string  bucketName,std::string objectName,std::string upid,ApiCallBack func)
 {
 	this->getOssSign("POST","/"+bucketName+"/"+objectName+"?uploadId="+upid);
-	this->mHttp.Delete("http://"+bucketName+"."+*m_host+"/?uploadId="+upid,boost::bind(&COssApi::recvabortMulitUp,this,_1,func));
+	this->mHttp.Delete("http://"+bucketName+"."+*m_host+"/?uploadId="+upid,boost::bind(&client::recvabortMulitUp,this,_1,func));
 }
 
-void COssApi::recvabortMulitUp(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
+void client::recvabortMulitUp(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
 
 	if(respone->msg.get())
@@ -447,7 +447,7 @@ void COssApi::recvabortMulitUp(boost::shared_ptr<CWebRespone> respone,ApiCallBac
 }
 
 //list Object
-void COssApi::ListMulitUp(std::string bucketName,ApiCallBack func,std::string prefix,std::string delemiter,std::string marker,std::string maxKeys,uploadsObjectList *objects)
+void client::ListMulitUp(std::string bucketName,ApiCallBack func,std::string prefix,std::string delemiter,std::string marker,std::string maxKeys,uploadsObjectList *objects)
 {
 	string url="http://"+bucketName+"."+*m_host+"/?uploads&max-uploads="+maxKeys;
 	if(prefix!="")
@@ -466,17 +466,17 @@ void COssApi::ListMulitUp(std::string bucketName,ApiCallBack func,std::string pr
 	}
 
 	this->getOssSign("GET","/"+bucketName+"/?uploads");
-	this->mHttp.Get(url,boost::bind(&COssApi::recvListListMulitUp,this,_1,objects,func));
+	this->mHttp.Get(url,boost::bind(&client::recvListListMulitUp,this,_1,objects,func));
 }
 
-void COssApi::recvListListMulitUp(boost::shared_ptr<CWebRespone> respone,uploadsObjectList *objects,ApiCallBack func)
+void client::recvListListMulitUp(boost::shared_ptr<CWebRespone> respone,uploadsObjectList *objects,ApiCallBack func)
 {
 	if(respone->statusCode>0)
 	{
 		if(respone->msg.get())
 		{
 			std::string sources=respone->msg.get(); 
-			sources=weblib::Utf8Decode(sources);
+			sources=echttp::Utf8Decode(sources);
 
 			//提取文件信息
 			boost::smatch result;
@@ -488,7 +488,7 @@ void COssApi::recvListListMulitUp(boost::shared_ptr<CWebRespone> respone,uploads
 			end=sources.end();
 
 			if(sources.find("<NextKeyMarker>")!=std::string::npos)
-				objects->marker=weblib::substr(sources,"<NextKeyMarker>","</NextKeyMarker>");
+				objects->marker=echttp::substr(sources,"<NextKeyMarker>","</NextKeyMarker>");
 			else
 				objects->marker="";
 
@@ -497,7 +497,7 @@ void COssApi::recvListListMulitUp(boost::shared_ptr<CWebRespone> respone,uploads
 				string path=result[1];
 				uploadsObject *ossObject=new uploadsObject;
 				ossObject->key=path;
-				ossObject->time=weblib::convert<int>(result[3]);
+				ossObject->time=echttp::convert<int>(result[3]);
 				ossObject->uploadId=result[2];
 				objects->lists.push_back(ossObject);
 				start=result[0].second;
@@ -524,14 +524,14 @@ void COssApi::recvListListMulitUp(boost::shared_ptr<CWebRespone> respone,uploads
 }
 
 //创建目录
-void COssApi::createDir(string bucketName,string dirname,ApiCallBack func)
+void client::createDir(string bucketName,string dirname,ApiCallBack func)
 {
 	this->getOssSign("PUT","/"+bucketName+"/"+dirname+"/");
 	this->mHttp.Request.m_otherHeader["Content-Length"]="0";
-	this->mHttp.Put("http://"+bucketName+"."+*m_host+"/"+dirname+"/","",boost::bind(&COssApi::recvCreateDir,this,_1,func));
+	this->mHttp.Put("http://"+bucketName+"."+*m_host+"/"+dirname+"/","",boost::bind(&client::recvCreateDir,this,_1,func));
 }
 
-void COssApi::recvCreateDir(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
+void client::recvCreateDir(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
 	if(respone->msg.get())
 	{
@@ -543,7 +543,7 @@ void COssApi::recvCreateDir(boost::shared_ptr<CWebRespone> respone,ApiCallBack f
 	}
 }
 
-void COssApi::deleteMulitFile(string bucketName,vector<string> filelist,ApiCallBack func)
+void client::deleteMulitFile(string bucketName,vector<string> filelist,ApiCallBack func)
 {
     string pstr="<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete><Quiet>true</Quiet> ";
 
@@ -554,24 +554,24 @@ void COssApi::deleteMulitFile(string bucketName,vector<string> filelist,ApiCallB
 		pstr+="</Object>";
 	}
 	pstr+="</Delete>";
-    pstr=weblib::Utf8Encode(pstr);
+    pstr=echttp::Utf8Encode(pstr);
 
 	char * data=new char [pstr.length()];
 	memset(data,0,pstr.length());
 	memcpy(data,pstr.c_str(),pstr.length());
 
-	std::string md5=weblib::char_md5(data,pstr.length());
+	std::string md5=echttp::char_md5(data,pstr.length());
 	delete[] data;
 
 	this->mHttp.Request.m_otherHeader["Content-Md5"]=md5;
 
 	this->getOssSign("POST","/"+bucketName+"/?delete",md5,"application/x-www-form-urlencoded");
-    this->mHttp.Post("http://"+bucketName+"."+*m_host+"/?delete",pstr,boost::bind(&COssApi::recvdeleteMulitFile,this,_1,func));
+    this->mHttp.Post("http://"+bucketName+"."+*m_host+"/?delete",pstr,boost::bind(&client::recvdeleteMulitFile,this,_1,func));
 	this->mHttp.Request.m_otherHeader["Content-Md5"]="";
 
 }
 
-void COssApi::recvdeleteMulitFile(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
+void client::recvdeleteMulitFile(boost::shared_ptr<CWebRespone> respone,ApiCallBack func)
 {
     if(respone->msg.get())
 	{
@@ -585,17 +585,17 @@ void COssApi::recvdeleteMulitFile(boost::shared_ptr<CWebRespone> respone,ApiCall
 
 
 
-void   COssApi::getOssSign(std::string method,std::string url,std::string contentMd5,std::string contentType,std::string ossHeader)
+void   client::getOssSign(std::string method,std::string url,std::string contentMd5,std::string contentType,std::string ossHeader)
 {
-	url=weblib::UrlDecode(url);
-	std::string date=weblib::GetCurrentTimeGMT();
+	url=echttp::UrlDecode(url);
+	std::string date=echttp::GetCurrentTimeGMT();
 	std::string signstr=method+"\n"+contentMd5+"\n"+contentType+"\n"+date+"\n";
 
     std::map<std::string,std::string>::iterator it;
 
     signstr+=ossHeader+url;
 
-    std::string authStr= weblib::ossAuth(this->mAccessKey,signstr);
+    std::string authStr= echttp::ossAuth(this->mAccessKey,signstr);
 
 	this->mHttp.Request.m_otherHeader["Date"]=date;
 	this->mHttp.Request.m_otherHeader["Authorization"]=std::string("OSS ")+this->mAccessId+":"+authStr;

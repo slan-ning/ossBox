@@ -1,12 +1,12 @@
 #pragma once
-#include "cossapi.h"
+#include "client.h"
 #include <iostream>
-#include "weblib.h"
+#include "echttp.h"
 #include <fstream>
 #include <queue>
 
 class COssSdk :
-        public COssApi
+        public client
 {
 private:
         vector<DOWNTASK*> downloadList; 
@@ -17,7 +17,7 @@ private:
 
 public:
         typedef boost::function<void(int,std::string,void*)> ApiCallBack;
-        COssSdk(std::string accessid,std::string accesskey,std::string *host):COssApi(accessid,accesskey,host)
+        COssSdk(std::string accessid,std::string accesskey,std::string *host):client(accessid,accesskey,host)
         {	
                 this->mAccessid=accessid;
                 this->mAccessKey=accesskey;
@@ -28,9 +28,9 @@ public:
         //上传目录功能
         void upDir(string bucketName,string path,ApiCallBack func,int mulitNum=5,string bucketPath="")
         {
-                vector<string> fileList=weblib::DirFiles(path);
+                vector<string> fileList=echttp::DirFiles(path);
                 vector<string>::iterator it=fileList.begin();
-                path=weblib::replace_all(path,"\\","/");
+                path=echttp::replace_all(path,"\\","/");
 
                 if(path[path.length()-1]!='/') path+="/";
 
@@ -38,10 +38,10 @@ public:
                 if(mulitNum>fileList.size()) mulitNum=fileList.size();
 
                 queue<UPTASK*> *uplist=new queue<UPTASK*>[mulitNum];
-                COssApi** apis=new COssApi*[mulitNum];
+                client** apis=new client*[mulitNum];
                 for(int i=0;i<mulitNum;i++)
                 {
-                        apis[i]=new COssApi(mAccessid,mAccessKey,m_host);
+                        apis[i]=new client(mAccessid,mAccessKey,m_host);
                 }
 
                 for(int i=0;it!=fileList.end();it++)
@@ -49,8 +49,8 @@ public:
 
                         int id=i%mulitNum;	
 
-                        string filename=weblib::replace_all(*it,"\\","/");
-                        filename=weblib::replace_all(filename,path,"");
+                        string filename=echttp::replace_all(*it,"\\","/");
+                        filename=echttp::replace_all(filename,path,"");
                         string bucketfile=bucketPath+filename;
 
                         UPTASK *upTask=new UPTASK;
@@ -74,7 +74,7 @@ public:
 
         }
 
-        void recvUpDir(int code,std::string msg,void* param,int taskId,queue<UPTASK*>  tasklist,COssApi* api,ApiCallBack func)
+        void recvUpDir(int code,std::string msg,void* param,int taskId,queue<UPTASK*>  tasklist,client* api,ApiCallBack func)
         {
 
                 UPTASK* lastTask=tasklist.front();
@@ -100,7 +100,7 @@ public:
                 }
                 else
                 {
-                        std::cout<<weblib::convert<string>(taskId)<<"上传完毕\n";
+                        std::cout<<echttp::convert<string>(taskId)<<"上传完毕\n";
                 }
 
         }
@@ -128,7 +128,7 @@ public:
                                 Object *ossObject=*it;
                                 task->bucketName=bucketName;
                                 task->bucketFileName=ossObject->path;
-                                string filename=weblib::replace_all(task->bucketFileName,bucketPath,"");
+                                string filename=echttp::replace_all(task->bucketFileName,bucketPath,"");
                                 task->path=downPath+filename;
                                 task->isDown=false;
 
@@ -139,10 +139,10 @@ public:
                         if(mulitNum>this->downloadList.size()) mulitNum=this->downloadList.size();
                         queue<DOWNTASK*> *downList=new queue<DOWNTASK*>[mulitNum];
 
-                        COssApi** apis=new COssApi*[mulitNum];
+                        client** apis=new client*[mulitNum];
                         for(int i=0;i<mulitNum;i++)
                         {
-                                apis[i]=new COssApi(mAccessid,mAccessKey,m_host);
+                                apis[i]=new client(mAccessid,mAccessKey,m_host);
                         }
 
                         for(int i=0;i<mulitNum;i++)
@@ -167,7 +167,7 @@ public:
 
         }
 
-        void recvDownFile(int code,std::string msg,void* param,int taskId,queue<DOWNTASK*>  tasklist,COssApi* api,ApiCallBack func)
+        void recvDownFile(int code,std::string msg,void* param,int taskId,queue<DOWNTASK*>  tasklist,client* api,ApiCallBack func)
         {
                 DOWNTASK* lastTask=tasklist.front();
                 func(code,msg,lastTask);
@@ -192,7 +192,7 @@ public:
                 }
                 else
                 {
-                        std::cout<<weblib::convert<string>(taskId)<<"下载完毕\n";
+                        std::cout<<echttp::convert<string>(taskId)<<"下载完毕\n";
                         delete api;
                 }
         }
@@ -207,7 +207,7 @@ public:
         void recvInitMulitUp(int code,std::string msg,void* param,string bucketName,string objectName,string path,int mulitNum,ApiCallBack func)
         {
 
-                size_t filesize=weblib::fileLen(path);
+                size_t filesize=echttp::fileLen(path);
                 vector<UPTASK*> *mulitUpList=new vector<UPTASK*>;
 
                 long step=10*1024*1024;
@@ -234,10 +234,10 @@ public:
 
                 if(i<mulitNum) mulitNum=i;
 
-                COssApi** apis=new COssApi*[mulitNum];
+                client** apis=new client*[mulitNum];
                 for(int i=0;i<mulitNum;i++)
                 {
-                        apis[i]=new COssApi(mAccessid,mAccessKey,m_host);
+                        apis[i]=new client(mAccessid,mAccessKey,m_host);
                 }
 
                 i=0;
@@ -256,7 +256,7 @@ public:
                        
                         task->worker->PutObject(task->bucketName,task->bucketFileName,task->path,task->upid,task->number,task->pos,task->size,boost::bind(&COssSdk::recvMulitUpFile,this,_1,_2,_3,j,task->number,mulitNum,mulitUpList,func));
                 }
-                func(1000,"分块上传："+path+" 同时io数："+weblib::convert<string>(mulitNum)+" 文件分块数："+weblib::convert<string>(i),NULL);
+                func(1000,"分块上传："+path+" 同时io数："+echttp::convert<string>(mulitNum)+" 文件分块数："+echttp::convert<string>(i),NULL);
 
 
         }
@@ -269,10 +269,10 @@ public:
                 {
                         task->isUp=true;
                         task->ETag=msg;
-                        func(1000,task->path+"分块--"+weblib::convert<string>(partid)+" 上传成功",NULL);
+                        func(1000,task->path+"分块--"+echttp::convert<string>(partid)+" 上传成功",NULL);
                 }else{
                         task->upNum++;
-                         func(1000,task->path+"分块--"+weblib::convert<string>(partid)+" 上传失败，重新上传",NULL);
+                         func(1000,task->path+"分块--"+echttp::convert<string>(partid)+" 上传失败，重新上传",NULL);
                 }
 
                 int taskNum=tasklist->size();
@@ -329,7 +329,7 @@ public:
 
 			for(size_t i=0;i<lists.size();i++)
 			{
-				string key=weblib::Utf8Encode(lists.at(i)->key);
+				string key=echttp::Utf8Encode(lists.at(i)->key);
 				this->abortMulitUp(objects->bucketName,key,lists.at(i)->uploadId,func);
 			}
 			delete objects;
@@ -341,10 +341,10 @@ public:
                 int i=tasklist->size();
                 if(i<mulitNum) mulitNum=i;
 
-                COssApi** apis=new COssApi*[mulitNum];
+                client** apis=new client*[mulitNum];
                 for(int i=0;i<mulitNum;i++)
                 {
-                        apis[i]=new COssApi(mAccessid,mAccessKey,m_host);
+                        apis[i]=new client(mAccessid,mAccessKey,m_host);
                 }
 
                 i=0;
@@ -360,13 +360,13 @@ public:
                 for(int j=0;j<mulitNum;j++)
                 {
                         UPTASK *task=tasklist->at(j);
-                        if(weblib::fileLen(task->path)>10*1024*1024)
+                        if(echttp::fileLen(task->path)>10*1024*1024)
                         {
                                 this->mulitUpFile(task->bucketName,task->bucketFileName,task->path,boost::bind(&COssSdk::recvUpFileList,this,_1,_2,_3,task->number,j,mulitNum,tasklist,func));
                         }
                         else
                         {
-                                func(1000,"端口"+weblib::convert<string>(j)+" 正在上传："+task->bucketFileName,NULL);
+                                func(1000,"端口"+echttp::convert<string>(j)+" 正在上传："+task->bucketFileName,NULL);
                                 task->worker->PutObject(task->bucketName,task->path,boost::bind(&COssSdk::recvUpFileList,this,_1,_2,_3,task->number,j,mulitNum,tasklist,func),task->bucketFileName);	
                         }
                 }       
@@ -405,7 +405,7 @@ public:
                                 ck=1;
                                 UPTASK*  newtask=tasklist->at(i);
                                 task->worker->PutObject(newtask->bucketName,newtask->path,boost::bind(&COssSdk::recvUpFileList,this,_1,_2,_3,newtask->number,threadId,mulitNum,tasklist,func),newtask->bucketFileName);
-                                func(1000,"端口"+weblib::convert<string>(threadId)+" 正在上传："+newtask->bucketFileName,NULL);
+                                func(1000,"端口"+echttp::convert<string>(threadId)+" 正在上传："+newtask->bucketFileName,NULL);
                                 break;
                         }
 
@@ -437,10 +437,10 @@ public:
                 int i=tasklist->size();
                 if(i<mulitNum) mulitNum=i;
 
-                COssApi** apis=new COssApi*[mulitNum];
+                client** apis=new client*[mulitNum];
                 for(int i=0;i<mulitNum;i++)
                 {
-                        apis[i]=new COssApi(mAccessid,mAccessKey,m_host);
+                        apis[i]=new client(mAccessid,mAccessKey,m_host);
                 }
 
                 i=0;

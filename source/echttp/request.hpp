@@ -61,7 +61,10 @@ public:
 
     up_task make_task(std::string method, const url &u,std::vector<char> data)
     {
-        this->m_header.insert("Content-Length",echttp::convert<std::string>(data.size()));
+		if (this->m_header.find("Content-Length")=="")
+        {
+			this->m_header.insert("Content-Length",echttp::convert<std::string>(data.size()));
+		}
         if(method=="POST" && m_header.find("Content-Type")=="")
         {
             this->m_header.insert("Content-Type","application/x-www-form-urlencoded");
@@ -73,9 +76,9 @@ public:
         
     }
 
-    up_task make_file_task(std::string method,const url &u,std::vector<char> path)
+    up_task make_file_task(std::string method,const url &u,std::vector<char> path,size_t pos=0,size_t size=0)
     {
-        if (this->m_header.find("Content-Type")=="")
+        if (this->m_header.find("Content-Length")=="")
         {
             size_t file_size=fs::file_size(path);
             this->m_header.insert("Content-Length",echttp::convert<std::string>(file_size));
@@ -86,7 +89,7 @@ public:
             this->m_header.insert("Content-Type","application/x-www-form-urlencoded");
         }
 
-        up_task task(this->get_header(method,u),path,true);
+        up_task task(this->get_header(method,u),path,true,pos,size);
         this->set_task_connection(task,u);
         return task;
     }
