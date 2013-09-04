@@ -72,7 +72,7 @@ public:
 		return false;
 	}
 
-	// 查找指定�?key �?value. 没找到返�?""，　这是个偷懒的帮助.
+	// 查找指定的 key 的 value. 没找到返回 ""，　这是个偷懒的帮助.
 	std::string find(const std::string& key) const
 	{
 		std::string v;
@@ -80,7 +80,7 @@ public:
 		return v;
 	}
 
-	// 得到Header字符�?
+	// 得到Header字符串.
 	std::string header_string() const
 	{
 		std::string str;

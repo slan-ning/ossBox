@@ -4,6 +4,7 @@
 #include "request.hpp"
 #include "respone.hpp"
 #include "reader.hpp"
+#include "detail/chunk_reader.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
@@ -45,7 +46,8 @@ namespace echttp
 
 		up_task m_task;
 		boost::shared_ptr<respone> m_respone;
-		
+		chunk_reader m_chunk_reader;
+
 		int nTimeOut;
         size_t m_buffer_size;
 
@@ -57,7 +59,6 @@ namespace echttp
         void handle_write(boost::system::error_code err,size_t bytes_transfarred);
         void handle_header_read(boost::system::error_code err,size_t bytes_transfarred);
 
-		void handle_chunk_size(boost::system::error_code err,size_t bytes_transfarred);
         void handle_chunk_read(boost::system::error_code err,size_t bytes_transfarred);
         void handle_body_read(boost::system::error_code err,size_t bytes_transfarred);
 
@@ -71,7 +72,7 @@ namespace echttp
 			ssl_sock(socket_,ctx),
 			deadline_(io_service),
             m_task(task),
-            m_buffer_size(1024)
+            m_buffer_size(10240)
 		{
 			nTimeOut=10000;
 			has_stop=true;
@@ -85,7 +86,7 @@ namespace echttp
 			ssl_sock(socket_,ctx),
 			deadline_(io_service),
             m_task(task),
-            m_buffer_size(1024),
+            m_buffer_size(20),
             m_respone(respone)
 		{
 			nTimeOut=10000;
@@ -142,7 +143,7 @@ namespace echttp
 				ssl_sock.handshake(boost::asio::ssl::stream_base::client);
 			}
 
-			while (true)
+			while (!m_task.is_end)
 			{
 				std::vector<char> buf=m_task.get_write_data(m_buffer_size);
 
@@ -388,15 +389,15 @@ namespace echttp
 				{
 
 					boost::asio::async_read_until(ssl_sock,respone_,"\r\n"
-						,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
-						,boost::asio::placeholders::bytes_transferred));
+					,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
+					,boost::asio::placeholders::bytes_transferred));
 
 				}
 				else
 				{
 					boost::asio::async_read_until(socket_,respone_,"\r\n"
-						,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
-						,boost::asio::placeholders::bytes_transferred));
+					,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
+					,boost::asio::placeholders::bytes_transferred));
 				}
 			}
 
@@ -413,36 +414,45 @@ namespace echttp
 
 	}
 
-	void client::handle_chunk_size(boost::system::error_code err,size_t bytes_transfarred)
+	void client::handle_chunk_read(boost::system::error_code err,size_t bytes_transfarred)
 	{
 		if(!err||err.value()==2)
 		{
 			boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-		    std::string  data_len(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+bytes_transfarred);
+		    std::vector<char>  readData(boost::asio::buffers_begin(bufs),boost::asio::buffers_end(bufs));
+		    respone_.consume(respone_.size());
 
-		    size_t next_chunk_size=atoi(data_len.c_str());
-		    respone_.commit(bytes_transfarred);
+		    m_chunk_reader.push(readData);
 
-			this->m_chunk_rest_size=next_chunk_size;
+		    std::vector<char> chunk_data=m_chunk_reader.get();
 
-			size_t read_size=m_chunk_rest_size<m_buffer_size ?m_chunk_rest_size:m_buffer_size;
+		    while(!chunk_data.empty())
+		    {
+		    	m_respone->save_body(chunk_data);
+		    	chunk_data=m_chunk_reader.get();
+		    }
 
-			m_chunk_rest_size-=read_size;
+		    if (!m_chunk_reader.m_chunk_end)
+		    {
+		    	if(protocol_==1)
+				{
 
-			if(protocol_==1)
-			{
+					boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(1)
+						,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
+						,boost::asio::placeholders::bytes_transferred));
 
-				boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(read_size)
-					,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
-					,boost::asio::placeholders::bytes_transferred));
-
-			}
-			else
-			{
-				boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(read_size)
-					,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
-					,boost::asio::placeholders::bytes_transferred));
-			}
+				}
+				else
+				{
+					boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(1)
+						,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
+						,boost::asio::placeholders::bytes_transferred));
+				}
+		    }else
+		    {
+		    	mHttpBack(m_respone);
+		    	return;
+		    }
 
 		}else
 		{
@@ -451,83 +461,6 @@ namespace echttp
             this->m_respone->error_msg=err.message();
 			mHttpBack(this->m_respone);
 		}
-	}
-
-	void client::handle_chunk_read(boost::system::error_code err,size_t bytes_transfarred)
-	{
-		if(!err||err.value()==2)
-		{
-			size_t buf_size=respone_.size();
-
-			std::istream response_stream(&respone_);
-			response_stream.unsetf(std::ios_base::skipws);//asio::streambuf 转换成istream 并且忽略空]
-
-			if(buf_size<=m_chunk_rest_size)//如果缓冲区的数据比要读的小
-			{
-				std::vector<char> buf;
-				buf.resize(buf_size);
-
-				m_chunk_rest_size-=buf_size;
-				response_stream.read(&buf.front(),buf_size);
-
-				m_respone->save_body(buf);
-
-				if(m_chunk_rest_size==0)//这个块已经读完
-				{
-					if(protocol_==1)
-					{
-
-						boost::asio::async_read_until(ssl_sock,respone_,"\r\n"
-							,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
-							,boost::asio::placeholders::bytes_transferred));
-
-					}
-					else
-					{
-						boost::asio::async_read_until(socket_,respone_,"\r\n"
-							,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
-							,boost::asio::placeholders::bytes_transferred));
-					}
-				}else
-				{
-					size_t read_size=m_chunk_rest_size<m_buffer_size?m_chunk_rest_size:m_buffer_size;
-
-					if(protocol_==1)
-					{
-
-						boost::asio::async_read(ssl_sock,respone_,boost::asio::transfer_at_least(read_size)
-							,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
-							,boost::asio::placeholders::bytes_transferred));
-
-					}
-					else
-					{
-						boost::asio::async_read(socket_,respone_,boost::asio::transfer_at_least(read_size)
-							,boost::bind(&client::handle_chunk_read,this,boost::asio::placeholders::error
-							,boost::asio::placeholders::bytes_transferred));
-					}
-				}
-			}else 
-			{
-				std::vector<char> buf;
-				buf.resize(m_chunk_rest_size);
-
-				
-				response_stream.read(&buf.front(),m_chunk_rest_size);
-
-				m_respone->save_body(buf);
-				m_chunk_rest_size=0;
-
-				this->handle_chunk_size(err,buf_size-m_chunk_rest_size);
-			}
-
-		}else{
-			stop();
-            this->m_respone->error_code=err.value();
-            this->m_respone->error_msg=err.message();
-			mHttpBack(this->m_respone);
-		}
-
 	}
 
 	//http包体的读取回调函数
@@ -592,7 +525,7 @@ namespace echttp
 
 				while (read_size<need_read_size)
 				{
-					std::vector<char> buf=reader.syn_read();
+					std::vector<char> buf=reader.syn_read(m_buffer_size);
 					m_respone->save_body(buf);
 					read_size+=buf.size();
 
@@ -621,7 +554,7 @@ namespace echttp
 
 				while (read_size<need_read_size)
 				{
-					std::vector<char> buf=reader.syn_read();
+					std::vector<char> buf=reader.syn_read(m_buffer_size);
 					m_respone->save_body(buf);
 					read_size+=buf.size();
 

@@ -22,7 +22,14 @@ private:
 		size_t tmp_size=chunk_remain_size<=len ? chunk_remain_size :len;
 		chunk_remain_size-=tmp_size;
 
-		return this->syn_read();
+		std::vector<char> content=this->syn_read(tmp_size);
+		if(chunk_remain_size==0)
+		{
+			return std::vector<char>(content.begin(),content.end()-2);
+		}else
+		{
+			return content;
+		}
 	}
 
 public:
@@ -48,23 +55,23 @@ public:
 		boost::asio::streambuf::const_buffers_type bufs = respone_.data();
 		std::string header(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+header_size);
 
-		respone_.commit(header_size);
+		respone_.consume(header_size);
 
 		return header;
 	}
 
-	std::vector<char> syn_read()
+	std::vector<char> syn_read(size_t len)
 	{
 		size_t alreadly_size=respone_.size();
 
-		if(alreadly_size<buffer_size)
+		if(alreadly_size<len)
 		{
-		    boost::asio::read(*m_sock,respone_,boost::asio::transfer_at_least(buffer_size-alreadly_size));
+		    boost::asio::read(*m_sock,respone_,boost::asio::transfer_at_least(len-alreadly_size));
 		}
 
 		boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-		std::vector<char> content(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+buffer_size);
-		respone_.commit(buffer_size);
+		std::vector<char> content(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+len);
+		respone_.consume(len);
 
 		return content;
 	}
@@ -83,14 +90,12 @@ public:
 
 			boost::asio::streambuf::const_buffers_type bufs = respone_.data();
 			std::string  data_len(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+content_size);
-			next_chunk_size=atoi(data_len.c_str());
-			respone_.commit(content_size);
-
-			size_t body_already_read_size=respone_.size()-content_size;
+			next_chunk_size=strtol(data_len.c_str(),NULL,16);
+			respone_.consume(content_size);
 
 			if(next_chunk_size>0)
 			{
-                chunk_remain_size=next_chunk_size;
+                chunk_remain_size=next_chunk_size+2;
 				return this->syn_read_chunk_data(buffer_size);
 				
 			}else

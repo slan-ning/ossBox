@@ -102,7 +102,7 @@ namespace echttp
         // @url 请求url
         // @file_path 发送的文件路径
         // @cb 异步回调函数
-        // @status_cb 写入，读取的状态回调�?
+        // @status_cb 写入，读取的状态回调。
         void PutFromFile(std::string url,std::string file_path,HttpCallBack cb,size_t pos=0,size_t size=0)
 		{
             this->_post_file("PUT",url,file_path,cb,pos,size);
@@ -112,7 +112,7 @@ namespace echttp
         ///同步PUT请求，put的数据从文件读取
         // @url 请求url
         // @file_path 发送的文件路径
-        // @ status_cb 写入，读取的状态回调�?
+        // @ status_cb 写入，读取的状态回调。
         boost::shared_ptr<respone> PutFromFile(std::string url,std::string file_path,size_t pos=0,size_t size=0)
 		{
 			return this->_post_file("PUT",url,file_path,pos,size);
@@ -129,12 +129,12 @@ namespace echttp
 			return ;
 		}
 
-        ///异步PUT请求，并将结果写入文�?
+        ///异步PUT请求，并将结果写入文件
         // @url 请求url
         // @data 发送的vector<char>数据
-        // @save_path 返回数据保存的文件路�?
+        // @save_path 返回数据保存的文件路径
         // @cb 异步回调函数
-        // @ status_cb 写入，读取的状态回调�?
+        // @ status_cb 写入，读取的状态回调。
         void PutToFile(std::string url,std::vector<char> data,std::string save_path,HttpCallBack cb)
 		{
 			this->_post("PUT",url,data,save_path,cb);
@@ -198,7 +198,7 @@ namespace echttp
 		}
 
 
-        //类似get方法,delete之类�?
+        //类似get方法,delete之类的
         boost::shared_ptr<respone> _get(std::string method,std::string url)
 		{
 
@@ -233,7 +233,7 @@ namespace echttp
             {
                 respone_->register_notify_callback(m_status_callback);
                 m_status_callback=0;
-            } //注册读写状态回�?
+            } //注册读写状态回调
 
 			client client(*m_ioServ,task,respone_);
 
